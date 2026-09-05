@@ -1,39 +1,107 @@
-# Example Next.js MCP Server
+# Rejectionism CampaignOS
 
-Project documentation: [index](docs/00-index.md), [current status](docs/STATUS.md), and [agent rules](AGENTS.md).
+The operational headquarters for **REJECTIONISM**, the satirical art movement built around rejection.
 
-This template uses [`mcp-handler` 2](https://www.npmjs.com/package/mcp-handler) and the MCP TypeScript SDK v2 to add a stateless MCP server to a Next.js App Router application.
+> **SECURITY WARNING**: `UNAUTHENTICATED_TEST_MODE=true`  
+> **UNAUTHENTICATED TEST SYSTEM — DO NOT STORE PRIVATE OR SENSITIVE DATA**  
+> This test version intentionally has no authentication. Never store passwords, tokens, bank details, or sensitive personal data. Proper authentication and authorization is the first post-MVP milestone.
 
-## Usage
+---
 
-Update `app/mcp/route.ts` with your tools, prompts, and resources following the [MCP TypeScript SDK v2 documentation](https://ts.sdk.modelcontextprotocol.io/v2/).
+## Documentation
 
-Start the application and connect an MCP client to:
+- [Documentation Index](docs/00-index.md)
+- [Current Project Status](docs/STATUS.md)
+- [Project Architecture & Context](docs/PROJECT-CONTEXT.md)
+- [MCP Tools Contract](docs/contracts/mcp-tools.md)
+- [Local Development Runbook](docs/runbooks/local-development.md)
+- [Vercel Deployment Runbook](docs/runbooks/vercel-deployment.md)
+- [Architecture Decision Records (ADRs)](docs/adr/README.md)
 
+---
+
+## Architecture Overview
+
+CampaignOS exposes two primary interfaces powered by the same shared server-only domain service layer (`lib/campaign/`) and PostgreSQL database:
+
+1. **Admin Web Interface (`/admin`)**: Interactive operations dashboard and registers for Work Items, Canon, Decisions, Visual Assets, Websites, Content Pieces, and Contacts.
+2. **Remote MCP Server (`/api/mcp`)**: Stateless Model Context Protocol endpoint exposing 10 campaign management tools and bootstrap diagnostic tools for AI clients.
+
+All mutations use optimistic concurrency control (`expectedVersion`) and record an auditable `Activity` entry in the same database transaction.
+
+---
+
+## Environment Configuration
+
+Configure the following variables in `.env` (or Vercel settings):
+
+```env
+# PostgreSQL connection string for Prisma pg adapter
+DATABASE_URL=postgresql://user:password@localhost:5432/campaignos
+
+# Temporary unauthenticated test mode (must be exactly "true" to enable operations)
+UNAUTHENTICATED_TEST_MODE=true
 ```
-http://localhost:3000/mcp
+
+When `UNAUTHENTICATED_TEST_MODE` is not `"true"`, the application fails closed: `/admin` shows a disabled notice and all MCP tool writes return a `TEST_MODE_DISABLED` error.
+
+---
+
+## Local Development Quick Start
+
+```bash
+# 1. Install dependencies
+pnpm install
+
+# 2. Generate Prisma client
+pnpm db:generate
+
+# 3. Apply migrations to your local/dev database
+pnpm db:migrate
+
+# 4. Seed canonical Rejectionism data
+pnpm db:seed
+
+# 5. Start development server
+pnpm dev
 ```
 
-## Protocol support
+Visit:
 
-- The current 2026-07-28 MCP protocol is served natively.
-- Stateless clients using 2025-era Streamable HTTP are supported by the compatibility layer.
-- The deprecated HTTP+SSE transport is not supported. Redis is not required.
+- **Admin Dashboard**: `http://localhost:3000/admin`
+- **Health Diagnostic**: `http://localhost:3000/api/health`
+- **MCP Endpoint**: `http://localhost:3000/api/mcp`
 
-## Notes for running on Vercel
+---
 
-- Use a Prisma-compatible Node.js release: 20.19+, 22.12+, or 24+.
-- Make sure you have [Fluid compute](https://vercel.com/docs/functions/fluid-compute) enabled for efficient execution
-- [Deploy the Next.js MCP template](https://vercel.com/templates/next.js/model-context-protocol-mcp-with-next-js)
+## Connecting AI Clients (OpenAI Codex, Claude Desktop, ChatGPT)
 
-## Sample Client
+### OpenAI Codex / Claude Desktop / Cursor (`claude_desktop_config.json`):
 
-`scripts/test-client.mjs` connects over Streamable HTTP, lists the available tools, calls `echo`, and runs the read-only `check_database` Prisma connectivity query.
-
-```sh
-pnpm test:client -- https://rejectionism-mcp.vercel.app
+```json
+{
+  "mcpServers": {
+    "rejectionism-campaign-os": {
+      "url": "http://localhost:3000/api/mcp"
+    }
+  }
+}
 ```
 
-## Database configuration
+### MCP Inspector (Interactive Tool Debugging):
 
-Set `DATABASE_URL` privately to the PostgreSQL connection string for the intended environment. Prisma runtime and CLI both use this variable; never commit its value. See [local development](docs/runbooks/local-development.md) for environment loading, client generation, and verification, and the [MCP contract](docs/contracts/mcp-tools.md) for diagnostic behaviour.
+```bash
+npx @modelcontextprotocol/inspector http://localhost:3000/api/mcp
+```
+
+### Running the Smoke Client:
+
+```bash
+pnpm test:client -- http://localhost:3000
+```
+
+---
+
+## Next Mandatory Milestone
+
+The first post-MVP milestone is implementing proper authentication and authorization (e.g. OAuth 2.0 / CIMD / session auth) to replace the temporary unauthenticated test mode.

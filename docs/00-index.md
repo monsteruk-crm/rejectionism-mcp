@@ -2,8 +2,22 @@
 
 Read [agent rules](../AGENTS.md), [status](STATUS.md), and [project context](PROJECT-CONTEXT.md) before non-trivial work.
 
-- [MCP tools contract](contracts/mcp-tools.md): arguments, results, errors, and verification limits.
-- [Local development and verification](runbooks/local-development.md): setup, Prisma, local and deployed checks.
-- [README](../README.md): entry-level usage and configuration.
+## Contracts & Architecture
 
-No ADRs have been recorded yet. Add decision, product, or architecture documents when a real requirement warrants them; do not create empty sections as placeholders.
+- [MCP tools contract](contracts/mcp-tools.md): Arguments, results, error codes, and annotations for all 10 CampaignOS tools and bootstrap diagnostics.
+- [Architecture Decision Records (ADRs)](adr/README.md):
+  - [ADR 0001: Temporary Unauthenticated Fail-Closed Test Mode](adr/0001-unauthenticated-test-mode.md)
+  - [ADR 0002: Shared PostgreSQL Domain Services with Transactional Audit and Concurrency](adr/0002-shared-services-and-transactional-audit.md)
+
+## Runbooks & Operations
+
+- [Local development and verification](runbooks/local-development.md): Setup, Prisma CLI, migration, seeding, unit tests, and smoke testing.
+- [Vercel deployment and client integration](runbooks/vercel-deployment.md): Hosting configuration, environment variables, Codex, ChatGPT, and MCP Inspector setup.
+
+## Project Entry Points
+
+- [README](../README.md): Product overview, security warnings, configuration, and developer quick start.
+
+## Historical Review Records
+
+- [Bootstrap code review (2026-09-05)](history/bootstrap-code-review-2026-09-05.md): Review of local bootstrap commit `d5a4508`; non-current evidence, findings, and verification boundaries.

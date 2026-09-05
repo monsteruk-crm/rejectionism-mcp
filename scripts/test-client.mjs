@@ -1,48 +1,184 @@
-import {
-  Client,
-  StreamableHTTPClientTransport,
-} from "@modelcontextprotocol/client";
+import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
+import { z } from "zod";
+
+const args = process.argv.slice(2).filter((arg) => arg !== "--");
 
 const origin =
-  process.argv.slice(2).find((argument) => argument !== "--") ||
-  "https://mcp-for-next-js.vercel.app";
+  args.find((a) => a.startsWith("http://") || a.startsWith("https://")) || "http://localhost:3000";
 
-async function main() {
-  const client = new Client({
-    name: "mcp-for-next-js-example-client",
-    version: "1.0.0",
-  });
-  const endpoint = new URL("/mcp", `${origin}/`);
-  const transport = new StreamableHTTPClientTransport(endpoint);
+const pathArg = args.find((a) => a.startsWith("--path="));
+const endpointPath = pathArg ? pathArg.split("=")[1] : "/api/mcp";
+const allowWrites = args.includes("--test-writes");
+const disposableDatabase = args.includes("--disposable-database");
 
-  console.log("Connecting to", endpoint.toString());
-  await client.connect(transport);
+const textContentSchema = z
+  .array(z.object({ type: z.literal("text"), text: z.string().min(1) }).passthrough())
+  .min(1);
 
-  console.log("Connected", client.getServerCapabilities());
+const requiredResultSchemas = {
+  echo: z.object({ message: z.literal("Smoke test ping") }).strict(),
+  check_database: z
+    .object({
+      status: z.literal("ok"),
+      result: z.literal(1),
+      latencyMs: z.number().int().nonnegative(),
+    })
+    .strict(),
+  campaign_get_status: z.object({ workItemCounts: z.record(z.string(), z.number()) }).passthrough(),
+  campaign_list_work_items: z
+    .object({
+      items: z.array(z.object({ id: z.string() }).passthrough()),
+      total: z.number().int().nonnegative(),
+    })
+    .passthrough(),
+  campaign_get_canon: z.discriminatedUnion("mode", [
+    z
+      .object({
+        mode: z.literal("single"),
+        entry: z.object({ key: z.literal("movement.name") }).passthrough(),
+      })
+      .passthrough(),
+    z.object({ mode: z.literal("collection"), items: z.array(z.unknown()) }).passthrough(),
+  ]),
+};
 
-  const { tools } = await client.listTools();
-  console.log("Tools", tools);
-
-  const result = await client.callTool({
-    name: "echo",
-    arguments: { message: "Hello from the MCP client" },
-  });
-  console.log("Echo result", result);
-
-  const databaseResult = await client.callTool({
-    name: "check_database",
-    arguments: {},
-  });
-  console.log("Database result", databaseResult);
-
-  if (databaseResult.isError) {
-    throw new Error("Prisma database check failed");
+function assertSuccessfulResult(toolName, result) {
+  if (result.isError) {
+    throw new Error(`${toolName} returned an error: ${JSON.stringify(result.content)}`);
   }
 
-  await client.close();
+  textContentSchema.parse(result.content);
+  requiredResultSchemas[toolName].parse(result.structuredContent);
+}
+
+async function main() {
+  console.log(`=== Rejectionism CampaignOS MCP Smoke Test ===`);
+  console.log(`Target origin:   ${origin}`);
+  console.log(`Endpoint path:   ${endpointPath}`);
+  console.log(`Test write ops:  ${allowWrites ? "ENABLED" : "DISABLED (read-only mode)"}`);
+
+  if (allowWrites && !disposableDatabase) {
+    throw new Error(
+      "--test-writes requires --disposable-database so smoke records cannot pollute persistent data.",
+    );
+  }
+
+  const client = new Client({
+    name: "rejectionism-mcp-smoke-client",
+    version: "1.0.0",
+  });
+
+  const endpoint = new URL(endpointPath, `${origin}/`);
+  const transport = new StreamableHTTPClientTransport(endpoint);
+
+  try {
+    console.log(`\n1. Connecting to ${endpoint.toString()}...`);
+    await client.connect(transport);
+    console.log("   Connected successfully.");
+
+    console.log("\n2. Listing available tools...");
+    const { tools } = await client.listTools();
+    const toolNames = tools.map((t) => t.name);
+    console.log(`   Registered tools (${toolNames.length}):`, toolNames.join(", "));
+
+    // Verify bootstrap tools
+    if (!toolNames.includes("echo")) {
+      throw new Error("Required tool 'echo' is missing.");
+    }
+    if (!toolNames.includes("check_database")) {
+      throw new Error("Required tool 'check_database' is missing.");
+    }
+
+    // Verify campaign tools
+    const expectedCampaignTools = [
+      "campaign_get_status",
+      "campaign_list_work_items",
+      "campaign_create_work_item",
+      "campaign_update_work_item",
+      "campaign_get_canon",
+      "campaign_record_decision",
+      "campaign_list_assets",
+      "campaign_register_asset",
+      "campaign_list_websites",
+      "campaign_activity_feed",
+    ];
+
+    for (const toolName of expectedCampaignTools) {
+      if (!toolNames.includes(toolName)) {
+        throw new Error(`Required CampaignOS tool '${toolName}' is missing.`);
+      }
+    }
+
+    console.log("\n3. Testing 'echo' tool...");
+    const echoResult = await client.callTool({
+      name: "echo",
+      arguments: { message: "Smoke test ping" },
+    });
+    assertSuccessfulResult("echo", echoResult);
+    console.log("   Echo passed:", echoResult.content?.[0]?.text);
+
+    console.log("\n4. Testing 'check_database' tool...");
+    const dbResult = await client.callTool({
+      name: "check_database",
+      arguments: {},
+    });
+    assertSuccessfulResult("check_database", dbResult);
+    console.log("   Database check passed:", dbResult.content?.[0]?.text);
+
+    console.log("\n5. Testing 'campaign_get_status' tool...");
+    const statusResult = await client.callTool({
+      name: "campaign_get_status",
+      arguments: {},
+    });
+    assertSuccessfulResult("campaign_get_status", statusResult);
+    console.log("   campaign_get_status passed:", statusResult.content?.[0]?.text);
+
+    console.log("\n6. Testing 'campaign_list_work_items' tool...");
+    const workResult = await client.callTool({
+      name: "campaign_list_work_items",
+      arguments: { limit: 5 },
+    });
+    assertSuccessfulResult("campaign_list_work_items", workResult);
+    console.log("   campaign_list_work_items passed:", workResult.content?.[0]?.text);
+
+    console.log("\n7. Testing 'campaign_get_canon' tool...");
+    const canonResult = await client.callTool({
+      name: "campaign_get_canon",
+      arguments: { key: "movement.name" },
+    });
+    assertSuccessfulResult("campaign_get_canon", canonResult);
+    console.log("   campaign_get_canon passed:", canonResult.content?.[0]?.text);
+
+    if (allowWrites) {
+      console.log("\n8. Testing write operation 'campaign_create_work_item'...");
+      const createResult = await client.callTool({
+        name: "campaign_create_work_item",
+        arguments: {
+          id: `smoke-${crypto.randomUUID()}`,
+          title: "Temporary Smoke Test Item",
+          description: "Created by smoke test script to verify write flow.",
+          status: "BACKLOG",
+          priority: 5,
+        },
+      });
+
+      if (createResult.isError) {
+        throw new Error(`Write operation failed: ${createResult.content?.[0]?.text}`);
+      }
+      textContentSchema.parse(createResult.content);
+      z.object({ id: z.string(), version: z.literal(1) })
+        .passthrough()
+        .parse(createResult.structuredContent);
+      console.log("   Write operation passed:", createResult.content?.[0]?.text);
+    }
+
+    console.log("\nAll smoke test assertions completed successfully.");
+  } finally {
+    await client.close();
+  }
 }
 
 main().catch((error) => {
-  console.error(error);
+  console.error("\nSmoke test failed with error:", error.message || error);
   process.exitCode = 1;
 });
