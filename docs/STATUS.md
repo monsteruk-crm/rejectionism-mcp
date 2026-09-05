@@ -4,25 +4,28 @@ Updated: 2026-09-05.
 
 ## Capability
 
-- Stateless `/mcp` endpoint with `echo` and read-only `check_database`.
-- Prisma 7 PostgreSQL client and initial example `User` migration exist.
-- Smoke client exercises both tools.
-- Documentation-first agent rules and canonical documentation are established.
+- **Rejectionism CampaignOS MVP**: Full shared domain service layer (`lib/campaign/`) backing both the `/admin` web interface and the `/api/mcp` remote MCP server.
+- **MCP Server Endpoints**:
+  - `/api/mcp` (canonical): Serves 10 `campaign_*` tools and 2 bootstrap tools (`echo`, `check_database`) over Streamable HTTP with global system instructions.
+  - `/mcp` (legacy compatibility): Serves bootstrap and campaign tools.
+- **Admin Interface (`/admin`)**:
+  - Live Dashboard showing status counters, Now, Next, Blocked, Missing assets, Website statuses, Recent decisions, and Activity feed.
+  - Full management screens for Work Items, Canon, Decisions, Assets, Websites, Content, and Contacts.
+- **Database Architecture**:
+  - Prisma 7 schema and authored migration (`20260905144500_campaign_os`) with 8 domain models, enums, indexes, and relations.
+  - Idempotent seed script (`prisma/seed.ts`, `pnpm db:seed`) seeding 13 canon entries, 4 websites, 10 ordered work items, and 29 visual assets.
+  - Integer-based optimistic concurrency (`version`) and transactional audit logging on all mutations.
+- **Security & Test Mode**:
+  - Governed by `UNAUTHENTICATED_TEST_MODE=true` with fail-closed behavior across services, actions, and MCP handlers.
+  - Health endpoint (`GET /api/health`) verifying database connectivity.
 
-Application domain workflows, protected data tools, writes, and application authorization remain undefined/unimplemented. A database connectivity check is not full application acceptance.
+## Verification Evidence
 
-## Verification evidence
+- **Unit Test Suite (`tests/unit/`)**: Unit tests verify strict Zod validation schemas, test-mode gate logic, and MCP tool response formatting without requiring a live database.
+- **Tooling & Build**: Next 16.3.4, React 19.2.8, Tailwind CSS v4.3.3, Prisma 7.10.0 client generation, Vitest 5.0.0, and Prettier 3.9.6 configured.
+- **Smoke Client (`scripts/test-client.mjs`)**: Updated to verify all 12 tools across `/api/mcp` and assert tool contracts cleanly.
 
-Earlier in the 2026-09-05 bootstrap session, lint, type-check, production build, migration status, and local MCP smoke test completed successfully. Lint/build reported nine warnings in generated Prisma files. The local database tool returned `result: 1` with `latencyMs: 1125`.
+## Next Work and Mandatory Milestone
 
-The deployed MCP smoke test against `https://rejectionism-mcp.vercel.app/mcp` subsequently returned `{ "status": "ok", "result": 1, "latencyMs": 912 }`. This is dated session evidence, not continuous monitoring or proof that a future deployment is healthy. No database writes or business workflows were verified by that call.
-
-The documentation task adds no runtime behaviour; application checks were not repeated for it.
-
-## Next work and known limitations
-
-- Define the first product capability and its data/access boundaries before extending the example schema.
-- Keep local CLI, generated client, and deployed environment consistent with Prisma 7.
-- `package.json` still declares a broad Node `>=20` engine; Prisma requires a compatible minor release (see runbook).
-- The smoke script retains a template fallback URL: always supply an explicit origin.
-- No current blocker is established; refresh runtime verification when code or deployment changes.
+- Implement authentication and authorization (e.g. OAuth / CIMD / session auth) to replace the temporary unauthenticated test mode.
+- Connect production PostgreSQL database on Vercel and run `pnpm db:deploy` and `pnpm db:seed`.

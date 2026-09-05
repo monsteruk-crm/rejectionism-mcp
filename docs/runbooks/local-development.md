@@ -1,55 +1,78 @@
-# Local development and verification
+# Local Development and Verification
 
-Use pnpm 8.15.7 and a Prisma-compatible Node release: 20.19+, 22.12+, or 24+. Bootstrap verification used Node 22.21.1. The repository already contains a Prisma schema/config; do not repeat `prisma init` during routine setup.
+Use pnpm 8.15.7 and a Prisma-compatible Node release: **20.19+**, **22.12+**, or **24+**.
 
 ## Setup
 
-Set `DATABASE_URL` privately in the project environment to a PostgreSQL connection string accepted by the `pg` adapter. Do not use an Accelerate `prisma+postgres://` URL with this direct adapter. Never paste credentials into docs or MCP arguments.
-
-Next.js loads its environment files; `prisma7.config.ts` imports `dotenv/config` for CLI usage. A value present only in `.env.local` is not automatically loaded by plain dotenv. Ensure CLI and application intentionally target the same database when comparing results.
+1. Copy `.env.example` to `.env` (or configure your development database):
+   ```bash
+   cp .env.example .env
+   ```
+2. Set `DATABASE_URL` to your local or development PostgreSQL database.
+3. Keep `UNAUTHENTICATED_TEST_MODE=true` for local development.
 
 ```bash
 pnpm install
-pnpm exec prisma --version
-pnpm exec prisma generate
+pnpm db:generate
 pnpm dev
 ```
 
-Installation already runs generation through `postinstall`; explicit generation is useful after schema changes. Generated files are not edited manually.
+App will be available at `http://localhost:3000` (Admin at `http://localhost:3000/admin`, MCP at `http://localhost:3000/api/mcp`).
 
-## Schema and migration checks
+---
+
+## Prisma Database Operations
+
+All Prisma scripts use `prisma7.config.ts` explicitly:
 
 ```bash
-pnpm exec prisma migrate status
+# Validate Prisma schema
+pnpm db:validate
+
+# Generate Prisma Client
+pnpm db:generate
+
+# Apply migrations in development
+pnpm db:migrate
+
+# Apply migrations in production / CI
+pnpm db:deploy
+
+# Run idempotent database seed
+pnpm db:seed
 ```
 
-This is a separate check from `check_database`. Review schema changes and create migrations against an intended development database. Applying migrations to a shared/deployed database or resetting data requires authorization for that target. Never infer authority from a connectivity check request.
+---
 
-## Protocol acceptance
-
-With a local server running, use a second terminal:
+## Testing & Quality Commands
 
 ```bash
+# Run unit test suite (Vitest)
+pnpm test
+
+# Run tests in watch mode
+pnpm test:watch
+
+# Run integration tests (requires test database)
+pnpm test:integration
+
+# Format code with Prettier
+pnpm format
+pnpm format:check
+
+# Run smoke test client against running local server
 pnpm test:client -- http://localhost:3000
+
+# Run smoke test with write operations
+pnpm test:client -- http://localhost:3000 --test-writes
 ```
 
-Expect tools to include `echo` and `check_database`, echoed content to match the input, and database structured content to contain `status: "ok"`, `result: 1`, and nonnegative `latencyMs`. Failure must be investigated at the correct layer: missing tool/deployment, MCP connection, environment, or database query.
+---
 
-For production-build verification:
+## MCP Inspector Debugging
+
+Connect MCP Inspector to inspect tools and run interactive calls:
 
 ```bash
-pnpm lint
-pnpm type-check
-pnpm build
-pnpm start
+npx @modelcontextprotocol/inspector http://localhost:3000/api/mcp
 ```
-
-Stop a development server using the same port before `pnpm start`, then run the smoke client again. Stop only processes started for your task; do not kill unrelated servers.
-
-For an authorized deployed check:
-
-```bash
-pnpm test:client -- https://rejectionism-mcp.vercel.app
-```
-
-Always provide the origin: the script's fallback still points at the original template. Record target, date, command result, and relevant structured output without secrets. Local success does not prove deployed success; `SELECT 1` does not prove application behaviour or table access.

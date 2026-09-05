@@ -19,3 +19,164 @@ model User {
   email     String   @unique
   name      String?
 }
+
+enum WorkItemStatus {
+  BACKLOG
+  NEXT
+  IN_PROGRESS
+  BLOCKED
+  DONE
+}
+
+enum AssetStatus {
+  MISSING
+  DRAFT
+  NEEDS_WORK
+  APPROVED
+  SUPERSEDED
+}
+
+enum WebsiteStatus {
+  PLANNED
+  RESERVED
+  IN_PROGRESS
+  LIVE
+  REDIRECT
+  UNKNOWN
+}
+
+enum ContentStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+}
+
+enum EntityType {
+  WORK_ITEM
+  CANON_ENTRY
+  DECISION
+  ASSET
+  WEBSITE
+  CONTACT
+  CONTENT_ITEM
+}
+
+model WorkItem {
+  id             String         @id @default(cuid())
+  title          String
+  description    String         @default("")
+  status         WorkItemStatus @default(BACKLOG)
+  priority       Int            @default(0)
+  dueDate        DateTime?
+  blockedReason  String?
+  evidenceUrl    String?
+  completionNote String?
+  version        Int            @default(1)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([status, priority])
+  @@index([dueDate])
+}
+
+model CanonEntry {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  category  String
+  notes     String?
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+}
+
+model Decision {
+  id           String    @id @default(cuid())
+  subject      String
+  decision     String
+  rationale    String
+  supersedesId String?   @unique
+  decidedAt    DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  supersedes   Decision? @relation("DecisionSupersession", fields: [supersedesId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  supersededBy Decision? @relation("DecisionSupersession")
+
+  @@index([decidedAt])
+}
+
+model Asset {
+  id             String      @id @default(cuid())
+  name           String
+  kind           String
+  status         AssetStatus @default(DRAFT)
+  sourceFilename String?
+  url            String?
+  notes          String?
+  version        Int         @default(1)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([status])
+  @@index([kind])
+}
+
+model Website {
+  id            String        @id @default(cuid())
+  name          String
+  domain        String        @unique
+  purpose       String
+  status        WebsiteStatus @default(UNKNOWN)
+  repositoryUrl String?
+  deploymentUrl String?
+  notes         String?
+  version       Int           @default(1)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Contact {
+  id           String   @id @default(cuid())
+  name         String
+  organization String?
+  role         String?
+  email        String?
+  status       String   @default("PROSPECT")
+  notes        String?
+  version      Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model ContentItem {
+  id           String        @id @default(cuid())
+  title        String
+  format       String
+  channel      String
+  status       ContentStatus @default(DRAFT)
+  scheduledFor DateTime?
+  publishedUrl String?
+  notes        String?
+  version      Int           @default(1)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([status])
+  @@index([scheduledFor])
+}
+
+model Activity {
+  id         String     @id @default(cuid())
+  entityType EntityType
+  entityId   String
+  action     String
+  summary    String
+  metadata   Json?
+  createdAt  DateTime   @default(now())
+
+  @@index([createdAt])
+  @@index([entityType, entityId, createdAt])
+}
