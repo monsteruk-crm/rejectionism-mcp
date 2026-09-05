@@ -53,8 +53,9 @@ pnpm test
 # Run tests in watch mode
 pnpm test:watch
 
-# Run integration tests (requires test database)
-pnpm test:integration
+# Apply migrations and seed data, then run integration tests. TEST_DATABASE_URL
+# must be a disposable PostgreSQL database and must differ from DATABASE_URL.
+TEST_DATABASE_URL=postgresql://... pnpm test:integration
 
 # Format code with Prettier
 pnpm format
@@ -63,9 +64,13 @@ pnpm format:check
 # Run smoke test client against running local server
 pnpm test:client -- http://localhost:3000
 
-# Run smoke test with write operations
-pnpm test:client -- http://localhost:3000 --test-writes
+# Run smoke writes only against a disposable database-backed server.
+pnpm test:client -- http://localhost:3000 --test-writes --disposable-database
 ```
+
+The default smoke command is a release gate: tool registration, `echo`, database connectivity, and required campaign reads must succeed with the documented structured response shape. It exits nonzero for degraded results. Write mode creates a uniquely identified work item, requires the disposable-database acknowledgement, and must never target persistent operational data.
+
+The integration harness refuses to run without `TEST_DATABASE_URL` or when it exactly matches `DATABASE_URL`. It does not reset or drop the target. Tests remove run-specific records, while deterministic seed fixtures remain for subsequent idempotent runs.
 
 ---
 

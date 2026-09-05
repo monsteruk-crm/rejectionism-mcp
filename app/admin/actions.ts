@@ -230,14 +230,7 @@ export async function updateWebsiteAction(formData: FormData): Promise<void> {
   const expectedVersion = Number(formData.get("expectedVersion"));
 
   const changes: Record<string, unknown> = {};
-  const allowedFields = [
-    "name",
-    "purpose",
-    "status",
-    "repositoryUrl",
-    "deploymentUrl",
-    "notes",
-  ];
+  const allowedFields = ["name", "purpose", "status", "repositoryUrl", "deploymentUrl", "notes"];
 
   for (const field of allowedFields) {
     if (formData.has(field)) {

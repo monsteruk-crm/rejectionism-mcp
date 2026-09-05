@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminServiceError } from "../../_components/service-error";
 import { notFound } from "next/navigation";
 import { getContentItemById } from "@/lib/campaign";
 import { updateContentItemAction } from "../../actions";
@@ -6,20 +7,20 @@ import { StatusBadge } from "../../_components/badge";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditContentItemPage(props: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function EditContentItemPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const result = await getContentItemById(params.id);
 
   if (!result.ok) {
-    notFound();
+    if (result.error.code === "NOT_FOUND") {
+      notFound();
+    }
+
+    return <AdminServiceError error={result.error} />;
   }
 
   const content = result.data;
-  const scheduledDateVal = content.scheduledFor
-    ? content.scheduledFor.slice(0, 10)
-    : "";
+  const scheduledDateVal = content.scheduledFor ? content.scheduledFor.slice(0, 10) : "";
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
@@ -45,7 +46,9 @@ export default async function EditContentItemPage(props: {
           <div className="flex items-center gap-2">
             <StatusBadge status={content.status} />
             <span className="font-mono text-xs text-ink/70">
-              {content.format} // {content.channel}
+              {content.format}
+              {" // "}
+              {content.channel}
             </span>
           </div>
           <span className="font-mono text-xs text-ink/70">Version {content.version}</span>
@@ -119,7 +122,10 @@ export default async function EditContentItemPage(props: {
           </div>
 
           <div>
-            <label htmlFor="scheduledFor" className="block font-heading font-bold uppercase text-ink">
+            <label
+              htmlFor="scheduledFor"
+              className="block font-heading font-bold uppercase text-ink"
+            >
               Scheduled For (Required if status is SCHEDULED)
             </label>
             <input
@@ -132,7 +138,10 @@ export default async function EditContentItemPage(props: {
           </div>
 
           <div>
-            <label htmlFor="publishedUrl" className="block font-heading font-bold uppercase text-ink">
+            <label
+              htmlFor="publishedUrl"
+              className="block font-heading font-bold uppercase text-ink"
+            >
               Published URL (Required if status is PUBLISHED)
             </label>
             <input

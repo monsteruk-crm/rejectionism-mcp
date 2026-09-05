@@ -3,11 +3,7 @@ import { z } from "zod";
 
 // Base validators
 export const NonEmptyString = (max: number) =>
-  z
-    .string()
-    .trim()
-    .min(1, "Must not be empty.")
-    .max(max, `Must not exceed ${max} characters.`);
+  z.string().trim().min(1, "Must not be empty.").max(max, `Must not exceed ${max} characters.`);
 
 export const OptionalString = (max: number) =>
   z
@@ -64,11 +60,19 @@ export const DomainString = z
     (val) => {
       if (!val) return false;
       // Must not contain scheme, slashes, ports, or query
-      if (val.includes("://") || val.includes("/") || val.includes(":") || val.includes("?") || val.includes("#") || val.includes("@")) {
+      if (
+        val.includes("://") ||
+        val.includes("/") ||
+        val.includes(":") ||
+        val.includes("?") ||
+        val.includes("#") ||
+        val.includes("@")
+      ) {
         return false;
       }
       // Basic hostname validation (labels separated by dots)
-      const domainRegex = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/;
+      const domainRegex =
+        /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/;
       return domainRegex.test(val);
     },
     { message: "Must be a valid lowercase domain name without scheme, port, or path." },
@@ -104,13 +108,7 @@ export const OptionalIsoDateString = z
   .transform((val) => (val ? new Date(val) : null));
 
 // Enums
-export const WorkItemStatusSchema = z.enum([
-  "BACKLOG",
-  "NEXT",
-  "IN_PROGRESS",
-  "BLOCKED",
-  "DONE",
-]);
+export const WorkItemStatusSchema = z.enum(["BACKLOG", "NEXT", "IN_PROGRESS", "BLOCKED", "DONE"]);
 export type WorkItemStatus = z.infer<typeof WorkItemStatusSchema>;
 
 export const AssetStatusSchema = z.enum([
@@ -132,11 +130,7 @@ export const WebsiteStatusSchema = z.enum([
 ]);
 export type WebsiteStatus = z.infer<typeof WebsiteStatusSchema>;
 
-export const ContentStatusSchema = z.enum([
-  "DRAFT",
-  "SCHEDULED",
-  "PUBLISHED",
-]);
+export const ContentStatusSchema = z.enum(["DRAFT", "SCHEDULED", "PUBLISHED"]);
 export type ContentStatus = z.infer<typeof ContentStatusSchema>;
 
 export const EntityTypeSchema = z.enum([
@@ -192,10 +186,9 @@ export const UpdateWorkItemChangesSchema = z
     completionNote: OptionalString(20000).optional(),
   })
   .strict()
-  .refine(
-    (changes) => Object.keys(changes).length > 0,
-    { message: "At least one field must be provided in changes." },
-  );
+  .refine((changes) => Object.keys(changes).length > 0, {
+    message: "At least one field must be provided in changes.",
+  });
 
 export const UpdateWorkItemInputSchema = z
   .object({
@@ -261,10 +254,7 @@ export const GetCanonQuerySchema = z
     offset: z.coerce.number().int().min(0).max(10000).default(0),
   })
   .strict()
-  .refine(
-    (q) => !(q.key && q.category),
-    { message: "Cannot specify both key and category." },
-  );
+  .refine((q) => !(q.key && q.category), { message: "Cannot specify both key and category." });
 export type GetCanonQuery = z.infer<typeof GetCanonQuerySchema>;
 
 // -------------------------------------------------------------

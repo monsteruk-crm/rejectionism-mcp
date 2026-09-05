@@ -1,13 +1,7 @@
 import "server-only";
 import { getPrisma } from "@/lib/prisma";
 import { isTestModeEnabled } from "./test-mode";
-import {
-  ok,
-  fail,
-  testModeDisabledResult,
-  handleServiceError,
-  ServiceResult,
-} from "./results";
+import { ok, fail, testModeDisabledResult, handleServiceError, ServiceResult } from "./results";
 import {
   CreateContactInputSchema,
   UpdateContactInputSchema,

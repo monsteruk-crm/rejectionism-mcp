@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { listAssets, AssetStatus } from "@/lib/campaign";
+import { AdminServiceError } from "../_components/service-error";
+import { listAssets } from "@/lib/campaign";
 import { StatusBadge } from "../_components/badge";
 import { createAssetAction } from "../actions";
 
@@ -9,7 +10,7 @@ export default async function AssetsListPage(props: {
   searchParams: Promise<{ status?: string; kind?: string }>;
 }) {
   const searchParams = await props.searchParams;
-  const statusFilter = searchParams.status as AssetStatus | undefined;
+  const statusFilter = searchParams.status;
   const kindFilter = searchParams.kind;
 
   const result = await listAssets({
@@ -29,7 +30,7 @@ export default async function AssetsListPage(props: {
             Visual Propaganda & Deliverables
           </p>
           <h1 className="font-heading text-4xl font-black uppercase tracking-tight">
-            Visual Assets ({total})
+            Visual Assets ({result.ok ? total : "Unavailable"})
           </h1>
         </div>
         <Link
@@ -39,6 +40,8 @@ export default async function AssetsListPage(props: {
           &larr; Back to Dashboard
         </Link>
       </div>
+
+      {!result.ok && <AdminServiceError error={result.error} />}
 
       {/* Filter Bar */}
       <div className="flex flex-wrap items-center gap-2 border-2 border-ink bg-paper p-3 font-heading text-xs uppercase">
@@ -68,7 +71,9 @@ export default async function AssetsListPage(props: {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Assets Table */}
         <div className="border-2 border-ink bg-paper p-6 shadow-[4px_4px_0px_0px_rgba(13,13,13,1)] lg:col-span-2">
-          {assets.length === 0 ? (
+          {!result.ok ? (
+            <p className="text-xs font-bold text-rejection-red">Register unavailable.</p>
+          ) : assets.length === 0 ? (
             <p className="text-xs italic text-ink/70">No assets match the filter.</p>
           ) : (
             <div className="overflow-x-auto">
@@ -185,7 +190,10 @@ export default async function AssetsListPage(props: {
             </div>
 
             <div>
-              <label htmlFor="sourceFilename" className="block font-heading font-bold uppercase text-ink">
+              <label
+                htmlFor="sourceFilename"
+                className="block font-heading font-bold uppercase text-ink"
+              >
                 Source Filename
               </label>
               <input

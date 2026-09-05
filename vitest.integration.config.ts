@@ -13,7 +13,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/integration/**/*.test.ts"],
-    passWithNoTests: true,
+    passWithNoTests: false,
     alias: {
       "server-only": path.resolve(dirname, "tests/__mocks__/server-only.ts"),
     },

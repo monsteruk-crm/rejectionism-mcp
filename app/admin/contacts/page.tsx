@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminServiceError } from "../_components/service-error";
 import { listContacts } from "@/lib/campaign";
 import { createContactAction } from "../actions";
 
@@ -17,7 +18,7 @@ export default async function ContactsListPage() {
             Collaborators & Alliances
           </p>
           <h1 className="font-heading text-4xl font-black uppercase tracking-tight">
-            Contacts ({total})
+            Contacts ({result.ok ? total : "Unavailable"})
           </h1>
         </div>
         <Link
@@ -28,10 +29,14 @@ export default async function ContactsListPage() {
         </Link>
       </div>
 
+      {!result.ok && <AdminServiceError error={result.error} />}
+
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Contacts Table */}
         <div className="border-2 border-ink bg-paper p-6 shadow-[4px_4px_0px_0px_rgba(13,13,13,1)] lg:col-span-2">
-          {contacts.length === 0 ? (
+          {!result.ok ? (
+            <p className="text-xs font-bold text-rejection-red">Register unavailable.</p>
+          ) : contacts.length === 0 ? (
             <p className="text-xs italic text-ink/70">
               No contacts registered. Note: Do not store sensitive or private contact details.
             </p>
@@ -64,7 +69,9 @@ export default async function ContactsListPage() {
                         )}
                       </td>
                       <td className="py-3 pr-2 font-mono text-xs text-ink/70 whitespace-nowrap">
-                        {contact.organization || "—"} // {contact.role || "—"}
+                        {contact.organization || "—"}
+                        {" // "}
+                        {contact.role || "—"}
                       </td>
                       <td className="py-3 pr-2 whitespace-nowrap">
                         <span className="border border-ink/40 bg-paper px-2 py-0.5 font-heading text-[10px] uppercase text-ink">
@@ -111,7 +118,10 @@ export default async function ContactsListPage() {
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label htmlFor="organization" className="block font-heading font-bold uppercase text-ink">
+                <label
+                  htmlFor="organization"
+                  className="block font-heading font-bold uppercase text-ink"
+                >
                   Organization
                 </label>
                 <input

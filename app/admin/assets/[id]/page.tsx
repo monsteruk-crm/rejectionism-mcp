@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminServiceError } from "../../_components/service-error";
 import { notFound } from "next/navigation";
 import { getAssetById } from "@/lib/campaign";
 import { updateAssetAction } from "../../actions";
@@ -6,14 +7,16 @@ import { StatusBadge } from "../../_components/badge";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditAssetPage(props: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function EditAssetPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const result = await getAssetById(params.id);
 
   if (!result.ok) {
-    notFound();
+    if (result.error.code === "NOT_FOUND") {
+      notFound();
+    }
+
+    return <AdminServiceError error={result.error} />;
   }
 
   const asset = result.data;
@@ -101,7 +104,10 @@ export default async function EditAssetPage(props: {
           </div>
 
           <div>
-            <label htmlFor="sourceFilename" className="block font-heading font-bold uppercase text-ink">
+            <label
+              htmlFor="sourceFilename"
+              className="block font-heading font-bold uppercase text-ink"
+            >
               Source Filename
             </label>
             <input

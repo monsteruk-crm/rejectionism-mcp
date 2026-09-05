@@ -8,6 +8,7 @@ All tool arguments use strict Zod validation. Unknown fields are rejected.
 ---
 
 ## 1. `campaign_get_status`
+
 - **Description**: Get high-level operational status overview (counts, in-progress, blocked, top 3 NEXT items, missing assets, website summary, recent decisions, latest activity).
 - **Input**: `{}` (strict empty object)
 - **Annotations**: `readOnlyHint: true`, `destructiveHint: false`, `idempotentHint: true`, `openWorldHint: true`
@@ -15,6 +16,7 @@ All tool arguments use strict Zod validation. Unknown fields are rejected.
 ---
 
 ## 2. `campaign_list_work_items`
+
 - **Description**: List and filter work items.
 - **Input**:
   - `status` (optional): `"BACKLOG" | "NEXT" | "IN_PROGRESS" | "BLOCKED" | "DONE"`
@@ -28,6 +30,7 @@ All tool arguments use strict Zod validation. Unknown fields are rejected.
 ---
 
 ## 3. `campaign_create_work_item`
+
 - **Description**: Create a new work item. Moving to or creating in `DONE` status requires `evidenceUrl` or `completionNote`. `BLOCKED` requires `blockedReason`.
 - **Input**:
   - `title` (required): string (1–200 chars)
@@ -43,6 +46,7 @@ All tool arguments use strict Zod validation. Unknown fields are rejected.
 ---
 
 ## 4. `campaign_update_work_item`
+
 - **Description**: Update an existing work item with optimistic concurrency.
 - **Input**:
   - `id` (required): string
@@ -54,6 +58,7 @@ All tool arguments use strict Zod validation. Unknown fields are rejected.
 ---
 
 ## 5. `campaign_get_canon`
+
 - **Description**: Query canon entries by unique key, by category, or list all.
 - **Input**:
   - `key` (optional): string (e.g. `movement.name`)
@@ -65,6 +70,7 @@ All tool arguments use strict Zod validation. Unknown fields are rejected.
 ---
 
 ## 6. `campaign_record_decision`
+
 - **Description**: Record an authoritative decision with optional supersession and optional atomic canon create/update.
 - **Input**:
   - `subject` (required): string (1–200 chars)
@@ -80,6 +86,7 @@ All tool arguments use strict Zod validation. Unknown fields are rejected.
 ---
 
 ## 7. `campaign_list_assets`
+
 - **Description**: List registered visual assets.
 - **Input**:
   - `status` (optional): `"MISSING" | "DRAFT" | "NEEDS_WORK" | "APPROVED" | "SUPERSEDED"`
@@ -91,6 +98,7 @@ All tool arguments use strict Zod validation. Unknown fields are rejected.
 ---
 
 ## 8. `campaign_register_asset`
+
 - **Description**: Register new asset metadata or update existing asset with optimistic concurrency.
 - **Input**: Discriminated union on `action`:
   - `{ action: "create", name, kind, status?, sourceFilename?, url?, notes? }`
@@ -100,6 +108,7 @@ All tool arguments use strict Zod validation. Unknown fields are rejected.
 ---
 
 ## 9. `campaign_list_websites`
+
 - **Description**: List all registered campaign domains, purposes, and known statuses.
 - **Input**:
   - `limit` (optional): `1 - 100` (default 50)
@@ -109,6 +118,7 @@ All tool arguments use strict Zod validation. Unknown fields are rejected.
 ---
 
 ## 10. `campaign_activity_feed`
+
 - **Description**: Get recent audit activity entries across all entity types.
 - **Input**:
   - `entityType` (optional): `"WORK_ITEM" | "CANON_ENTRY" | "DECISION" | "ASSET" | "WEBSITE" | "CONTACT" | "CONTENT_ITEM"`
@@ -118,13 +128,20 @@ All tool arguments use strict Zod validation. Unknown fields are rejected.
 ---
 
 ## Bootstrap Diagnostic Tools
+
 - `echo`: Echoes message back (`{ message: string }`). Read-only, closed-world.
 - `check_database`: Runs `SELECT 1 AS result` through Prisma. Read-only, open-world.
+
+Successful tools return at least one text content item plus `structuredContent` matching the registered output schema. The release smoke client treats missing or malformed structured content and any `isError` result from `check_database`, `campaign_get_status`, `campaign_list_work_items`, or `campaign_get_canon` as a failed check.
+
+Smoke writes are opt-in with both `--test-writes` and `--disposable-database`. They create a uniquely identified work item and must never target persistent operational data.
 
 ---
 
 ## Standard Error Response Format
+
 When any tool operation encounters a domain failure or gate block:
+
 ```json
 {
   "content": [

@@ -1,18 +1,8 @@
 import "server-only";
 import { getPrisma } from "@/lib/prisma";
 import { isTestModeEnabled } from "./test-mode";
-import {
-  ok,
-  fail,
-  testModeDisabledResult,
-  handleServiceError,
-  ServiceResult,
-} from "./results";
-import {
-  ListActivityQuerySchema,
-  EntityType,
-  MutationSource,
-} from "./schemas";
+import { ok, fail, testModeDisabledResult, handleServiceError, ServiceResult } from "./results";
+import { ListActivityQuerySchema, EntityType, MutationSource } from "./schemas";
 import { Prisma } from "@/app/generated/prisma/client";
 
 export interface CreateActivityParams {
@@ -24,10 +14,7 @@ export interface CreateActivityParams {
   metadata?: Record<string, unknown> | null;
 }
 
-export async function createActivityTx(
-  tx: Prisma.TransactionClient,
-  params: CreateActivityParams,
-) {
+export async function createActivityTx(tx: Prisma.TransactionClient, params: CreateActivityParams) {
   const metadataJson: Prisma.InputJsonValue = {
     source: params.source,
     ...(params.metadata || {}),
@@ -60,9 +47,7 @@ export async function listActivity(
 
   try {
     const prisma = getPrisma();
-    const where: Prisma.ActivityWhereInput = entityType
-      ? { entityType }
-      : {};
+    const where: Prisma.ActivityWhereInput = entityType ? { entityType } : {};
 
     const [items, total] = await Promise.all([
       prisma.activity.findMany({

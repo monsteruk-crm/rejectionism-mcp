@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminServiceError } from "../_components/service-error";
 import { listDecisions } from "@/lib/campaign";
 import { recordDecisionAction } from "../actions";
 
@@ -19,7 +20,7 @@ export default async function DecisionsListPage() {
             Governance & Strategy
           </p>
           <h1 className="font-heading text-4xl font-black uppercase tracking-tight">
-            Decisions Log ({decisions.length})
+            Decisions Log ({result.ok ? decisions.length : "Unavailable"})
           </h1>
         </div>
         <Link
@@ -30,10 +31,14 @@ export default async function DecisionsListPage() {
         </Link>
       </div>
 
+      {!result.ok && <AdminServiceError error={result.error} />}
+
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Decisions List */}
         <div className="border-2 border-ink bg-paper p-6 shadow-[4px_4px_0px_0px_rgba(13,13,13,1)] lg:col-span-2">
-          {decisions.length === 0 ? (
+          {!result.ok ? (
+            <p className="text-xs font-bold text-rejection-red">Register unavailable.</p>
+          ) : decisions.length === 0 ? (
             <p className="text-xs italic text-ink/70">No decisions recorded yet.</p>
           ) : (
             <ul className="divide-y divide-ink/15">
@@ -48,7 +53,8 @@ export default async function DecisionsListPage() {
                         {dec.subject}
                       </Link>
                       <p className="font-mono text-[11px] text-ink/50">
-                        Decided: {new Date(dec.decidedAt).toLocaleDateString()} // ID: {dec.id}
+                        Decided: {new Date(dec.decidedAt).toLocaleDateString()} {" // ID: "}
+                        {dec.id}
                       </p>
                     </div>
                     {dec.supersededById ? (
@@ -126,7 +132,10 @@ export default async function DecisionsListPage() {
             </div>
 
             <div>
-              <label htmlFor="rationale" className="block font-heading font-bold uppercase text-ink">
+              <label
+                htmlFor="rationale"
+                className="block font-heading font-bold uppercase text-ink"
+              >
                 Rationale *
               </label>
               <textarea
@@ -141,7 +150,10 @@ export default async function DecisionsListPage() {
             </div>
 
             <div>
-              <label htmlFor="supersedesId" className="block font-heading font-bold uppercase text-ink">
+              <label
+                htmlFor="supersedesId"
+                className="block font-heading font-bold uppercase text-ink"
+              >
                 Supersedes Previous Decision (Optional)
               </label>
               <select

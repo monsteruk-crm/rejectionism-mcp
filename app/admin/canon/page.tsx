@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminServiceError } from "../_components/service-error";
 import { getCanon } from "@/lib/campaign";
 import { createCanonEntryAction } from "../actions";
 
@@ -19,8 +20,8 @@ export default async function CanonListPage(props: {
     result.ok && result.data.mode === "collection"
       ? result.data.items
       : result.ok && result.data.mode === "single"
-      ? [result.data.entry]
-      : [];
+        ? [result.data.entry]
+        : [];
 
   const categories = Array.from(new Set(items.map((i) => i.category))).sort();
 
@@ -43,10 +44,14 @@ export default async function CanonListPage(props: {
         </Link>
       </div>
 
+      {!result.ok && <AdminServiceError error={result.error} />}
+
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Canon Table */}
         <div className="border-2 border-ink bg-paper p-6 shadow-[4px_4px_0px_0px_rgba(13,13,13,1)] lg:col-span-2">
-          {items.length === 0 ? (
+          {!result.ok ? (
+            <p className="text-xs font-bold text-rejection-red">Register unavailable.</p>
+          ) : items.length === 0 ? (
             <p className="text-xs italic text-ink/70">No canonical entries registered.</p>
           ) : (
             <div className="overflow-x-auto">
@@ -62,9 +67,7 @@ export default async function CanonListPage(props: {
                 <tbody className="divide-y divide-ink/15">
                   {items.map((entry) => (
                     <tr key={entry.id} className="hover:bg-cream">
-                      <td className="py-3 pr-4 font-mono font-bold text-ink">
-                        {entry.key}
-                      </td>
+                      <td className="py-3 pr-4 font-mono font-bold text-ink">{entry.key}</td>
                       <td className="py-3 pr-4 font-sans text-xs text-ink/90">
                         {entry.value}
                         {entry.notes && (

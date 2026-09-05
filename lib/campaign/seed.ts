@@ -1,12 +1,7 @@
 import "server-only";
 import { getPrisma } from "@/lib/prisma";
 import { isTestModeEnabled } from "./test-mode";
-import {
-  ok,
-  testModeDisabledResult,
-  handleServiceError,
-  ServiceResult,
-} from "./results";
+import { ok, testModeDisabledResult, handleServiceError, ServiceResult } from "./results";
 import {
   SEED_CANON_ENTRIES,
   SEED_WEBSITES,

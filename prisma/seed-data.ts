@@ -233,7 +233,8 @@ export const SEED_WORK_ITEMS: SeedWorkItem[] = [
   },
   {
     id: "seed-work-09",
-    title: "Begin the weekly three-format content rhythm: Archive story, Ministry decree, Church/Founder lore.",
+    title:
+      "Begin the weekly three-format content rhythm: Archive story, Ministry decree, Church/Founder lore.",
     description:
       "Establish recurring weekly publishing schedule: Rejection of the Week (Archive story), Ministry Decree, and Pontifical Bull / Founder Lore (HQ Phase 3 / Move 9).",
     status: "NEXT",
@@ -241,7 +242,8 @@ export const SEED_WORK_ITEMS: SeedWorkItem[] = [
   },
   {
     id: "seed-work-10",
-    title: "Review actual submissions and sharing after four weeks before building shops, extra sites, apps, or elaborate features.",
+    title:
+      "Review actual submissions and sharing after four weeks before building shops, extra sites, apps, or elaborate features.",
     description:
       "Review scoreboard signals (submission completion, moderation turnaround, share rates, countries represented) after four weeks before expanding infrastructure (HQ Phase 3 / Move 10).",
     status: "NEXT",
@@ -506,8 +508,7 @@ export const SEED_ASSETS: SeedAsset[] = [
     status: "MISSING",
     sourceFilename: null,
     url: null,
-    notes:
-      "Designed one-page manifesto layout in web, PDF, and print versions (HQ Section 4C #5).",
+    notes: "Designed one-page manifesto layout in web, PDF, and print versions (HQ Section 4C #5).",
   },
   {
     id: "seed-asset-4c-06",
@@ -546,7 +547,6 @@ export const SEED_ASSETS: SeedAsset[] = [
     status: "MISSING",
     sourceFilename: null,
     url: null,
-    notes:
-      "Comprehensive alt text and caption sheet for all canonical artwork (HQ Section 4C #9).",
+    notes: "Comprehensive alt text and caption sheet for all canonical artwork (HQ Section 4C #9).",
   },
 ];

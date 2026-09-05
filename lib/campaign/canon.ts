@@ -1,13 +1,7 @@
 import "server-only";
 import { getPrisma } from "@/lib/prisma";
 import { isTestModeEnabled } from "./test-mode";
-import {
-  ok,
-  fail,
-  testModeDisabledResult,
-  handleServiceError,
-  ServiceResult,
-} from "./results";
+import { ok, fail, testModeDisabledResult, handleServiceError, ServiceResult } from "./results";
 import {
   CreateCanonEntryInputSchema,
   UpdateCanonEntryInputSchema,
@@ -284,7 +278,9 @@ export async function getCanon(
 
 export async function listCanon(
   rawQuery: unknown = {},
-): Promise<ServiceResult<{ items: CanonEntryDto[]; total: number; limit: number; offset: number }>> {
+): Promise<
+  ServiceResult<{ items: CanonEntryDto[]; total: number; limit: number; offset: number }>
+> {
   const res = await getCanon(rawQuery);
   if (!res.ok) {
     return res;

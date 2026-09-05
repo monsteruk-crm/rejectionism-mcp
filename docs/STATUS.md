@@ -11,6 +11,7 @@ Updated: 2026-09-05.
 - **Admin Interface (`/admin`)**:
   - Live Dashboard showing status counters, Now, Next, Blocked, Missing assets, Website statuses, Recent decisions, and Activity feed.
   - Full management screens for Work Items, Canon, Decisions, Assets, Websites, Content, and Contacts.
+  - List filters use shared strict schemas, failed retrievals remain distinct from empty datasets, and detail pages use 404 only for missing records.
 - **Database Architecture**:
   - Prisma 7 schema and authored migration (`20260905144500_campaign_os`) with 8 domain models, enums, indexes, and relations.
   - Idempotent seed script (`prisma/seed.ts`, `pnpm db:seed`) seeding 13 canon entries, 4 websites, 10 ordered work items, and 29 visual assets.
@@ -22,8 +23,9 @@ Updated: 2026-09-05.
 ## Verification Evidence
 
 - **Unit Test Suite (`tests/unit/`)**: Unit tests verify strict Zod validation schemas, test-mode gate logic, and MCP tool response formatting without requiring a live database.
+- **Integration Suite (`tests/integration/`)**: The harness requires a distinct `TEST_DATABASE_URL`, deploys migrations, runs the idempotent seed, and verifies representative persistence, stale-version rejection, audit rollback, decision supersession, and compound decision/canon atomicity. This remains environment-dependent and is not evidence about a deployed database.
 - **Tooling & Build**: Next 16.3.4, React 19.2.8, Tailwind CSS v4.3.3, Prisma 7.10.0 client generation, Vitest 5.0.0, and Prettier 3.9.6 configured.
-- **Smoke Client (`scripts/test-client.mjs`)**: Updated to verify all 12 tools across `/api/mcp` and assert tool contracts cleanly.
+- **Smoke Client (`scripts/test-client.mjs`)**: Requires successful database and campaign reads with valid structured results. Write checks require an explicit disposable-database acknowledgement.
 
 ## Next Work and Mandatory Milestone
 

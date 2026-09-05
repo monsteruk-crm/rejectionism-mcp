@@ -95,7 +95,8 @@ export function registerCampaignTools(server: McpServer) {
       const res = await createWorkItem(args, "mcp");
       return toMcpToolResult(
         res as any,
-        (data: any) => `Work item created: "${data.title}" (ID: ${data.id}, Version: ${data.version}).`,
+        (data: any) =>
+          `Work item created: "${data.title}" (ID: ${data.id}, Version: ${data.version}).`,
       );
     },
   );
@@ -120,7 +121,8 @@ export function registerCampaignTools(server: McpServer) {
       const res = await updateWorkItem(args, "mcp");
       return toMcpToolResult(
         res as any,
-        (data: any) => `Work item updated: "${data.title}" (ID: ${data.id}, New Version: ${data.version}, Status: ${data.status}).`,
+        (data: any) =>
+          `Work item updated: "${data.title}" (ID: ${data.id}, New Version: ${data.version}, Status: ${data.status}).`,
       );
     },
   );
@@ -222,7 +224,8 @@ export function registerCampaignTools(server: McpServer) {
       const res = await registerAsset(args, "mcp");
       return toMcpToolResult(
         res as any,
-        (data: any) => `Asset registered/updated: "${data.name}" (ID: ${data.id}, Version: ${data.version}, Status: ${data.status}).`,
+        (data: any) =>
+          `Asset registered/updated: "${data.name}" (ID: ${data.id}, Version: ${data.version}, Status: ${data.status}).`,
       );
     },
   );

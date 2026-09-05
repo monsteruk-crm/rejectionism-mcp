@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminServiceError } from "../../_components/service-error";
 import { notFound } from "next/navigation";
 import { getWorkItemById } from "@/lib/campaign";
 import { updateWorkItemAction } from "../../actions";
@@ -6,14 +7,16 @@ import { StatusBadge, PriorityBadge } from "../../_components/badge";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditWorkItemPage(props: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function EditWorkItemPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const result = await getWorkItemById(params.id);
 
   if (!result.ok) {
-    notFound();
+    if (result.error.code === "NOT_FOUND") {
+      notFound();
+    }
+
+    return <AdminServiceError error={result.error} />;
   }
 
   const item = result.data;
@@ -66,7 +69,10 @@ export default async function EditWorkItemPage(props: {
           </div>
 
           <div>
-            <label htmlFor="description" className="block font-heading font-bold uppercase text-ink">
+            <label
+              htmlFor="description"
+              className="block font-heading font-bold uppercase text-ink"
+            >
               Description
             </label>
             <textarea
@@ -115,7 +121,10 @@ export default async function EditWorkItemPage(props: {
           </div>
 
           <div>
-            <label htmlFor="blockedReason" className="block font-heading font-bold uppercase text-ink">
+            <label
+              htmlFor="blockedReason"
+              className="block font-heading font-bold uppercase text-ink"
+            >
               Blocked Reason (Required if status is BLOCKED)
             </label>
             <textarea
@@ -129,7 +138,10 @@ export default async function EditWorkItemPage(props: {
           </div>
 
           <div>
-            <label htmlFor="evidenceUrl" className="block font-heading font-bold uppercase text-ink">
+            <label
+              htmlFor="evidenceUrl"
+              className="block font-heading font-bold uppercase text-ink"
+            >
               Evidence URL (Required for DONE if no completion note)
             </label>
             <input
@@ -143,7 +155,10 @@ export default async function EditWorkItemPage(props: {
           </div>
 
           <div>
-            <label htmlFor="completionNote" className="block font-heading font-bold uppercase text-ink">
+            <label
+              htmlFor="completionNote"
+              className="block font-heading font-bold uppercase text-ink"
+            >
               Completion Note (Required for DONE if no evidence URL)
             </label>
             <textarea

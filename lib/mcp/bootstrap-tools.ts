@@ -10,11 +10,7 @@ export function registerBootstrapTools(server: McpServer) {
       description: "Echo a message back to verify MCP connectivity.",
       inputSchema: z
         .object({
-          message: z
-            .string()
-            .min(1)
-            .max(100)
-            .describe("Message to echo back"),
+          message: z.string().min(1).max(100).describe("Message to echo back"),
         })
         .strict(),
       outputSchema: z

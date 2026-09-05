@@ -1,12 +1,7 @@
 import "server-only";
 import { getPrisma } from "@/lib/prisma";
 import { isTestModeEnabled } from "./test-mode";
-import {
-  ok,
-  testModeDisabledResult,
-  handleServiceError,
-  ServiceResult,
-} from "./results";
+import { ok, testModeDisabledResult, handleServiceError, ServiceResult } from "./results";
 import { WorkItemDto, mapToDto as mapWorkItemToDto } from "./work-items";
 import { AssetDto, mapAssetToDto } from "./assets";
 import { WebsiteDto, mapWebsiteToDto } from "./websites";
@@ -106,8 +101,7 @@ export async function getCampaignStatus(): Promise<ServiceResult<CampaignStatusD
       }),
     ]);
 
-    const totalWorkItems =
-      backlogCount + nextCount + inProgressCount + blockedCount + doneCount;
+    const totalWorkItems = backlogCount + nextCount + inProgressCount + blockedCount + doneCount;
 
     return ok({
       workItemCounts: {

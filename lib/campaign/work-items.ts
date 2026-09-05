@@ -1,13 +1,7 @@
 import "server-only";
 import { getPrisma } from "@/lib/prisma";
 import { isTestModeEnabled } from "./test-mode";
-import {
-  ok,
-  fail,
-  testModeDisabledResult,
-  handleServiceError,
-  ServiceResult,
-} from "./results";
+import { ok, fail, testModeDisabledResult, handleServiceError, ServiceResult } from "./results";
 import {
   CreateWorkItemInputSchema,
   UpdateWorkItemInputSchema,
@@ -199,12 +193,16 @@ export async function updateWorkItem(
         changes.evidenceUrl !== undefined ? changes.evidenceUrl : existing.evidenceUrl;
       const resultingCompletionNote =
         changes.completionNote !== undefined ? changes.completionNote : existing.completionNote;
-      
+
       let resultingBlockedReason =
         changes.blockedReason !== undefined ? changes.blockedReason : existing.blockedReason;
 
       // If moving away from BLOCKED and blockedReason was not explicitly provided in changes, clear it
-      if (existing.status === "BLOCKED" && resultingStatus !== "BLOCKED" && changes.blockedReason === undefined) {
+      if (
+        existing.status === "BLOCKED" &&
+        resultingStatus !== "BLOCKED" &&
+        changes.blockedReason === undefined
+      ) {
         resultingBlockedReason = null;
       }
 
@@ -227,7 +225,10 @@ export async function updateWorkItem(
       if (changes.status !== undefined) updateData.status = changes.status;
       if (changes.priority !== undefined) updateData.priority = changes.priority;
       if (changes.dueDate !== undefined) updateData.dueDate = changes.dueDate;
-      if (changes.blockedReason !== undefined || resultingBlockedReason !== existing.blockedReason) {
+      if (
+        changes.blockedReason !== undefined ||
+        resultingBlockedReason !== existing.blockedReason
+      ) {
         updateData.blockedReason = resultingBlockedReason;
       }
       if (changes.evidenceUrl !== undefined) updateData.evidenceUrl = changes.evidenceUrl;
@@ -346,11 +347,7 @@ export async function listWorkItems(
     const [items, total] = await Promise.all([
       prisma.workItem.findMany({
         where,
-        orderBy: [
-          { priority: "desc" },
-          { createdAt: "asc" },
-          { id: "asc" },
-        ],
+        orderBy: [{ priority: "desc" }, { createdAt: "asc" }, { id: "asc" }],
         take: limit,
         skip: offset,
       }),

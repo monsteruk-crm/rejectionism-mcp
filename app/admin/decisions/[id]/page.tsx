@@ -1,17 +1,20 @@
 import Link from "next/link";
+import { AdminServiceError } from "../../_components/service-error";
 import { notFound } from "next/navigation";
 import { getDecisionById } from "@/lib/campaign";
 
 export const dynamic = "force-dynamic";
 
-export default async function DecisionDetailPage(props: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function DecisionDetailPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const result = await getDecisionById(params.id);
 
   if (!result.ok) {
-    notFound();
+    if (result.error.code === "NOT_FOUND") {
+      notFound();
+    }
+
+    return <AdminServiceError error={result.error} />;
   }
 
   const dec = result.data;

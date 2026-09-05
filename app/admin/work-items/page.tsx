@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { listWorkItems, WorkItemStatus } from "@/lib/campaign";
+import { AdminServiceError } from "../_components/service-error";
+import { listWorkItems } from "@/lib/campaign";
 import { StatusBadge, PriorityBadge } from "../_components/badge";
 import { createWorkItemAction } from "../actions";
 
@@ -9,7 +10,7 @@ export default async function WorkItemsListPage(props: {
   searchParams: Promise<{ status?: string; search?: string }>;
 }) {
   const searchParams = await props.searchParams;
-  const statusFilter = searchParams.status as WorkItemStatus | undefined;
+  const statusFilter = searchParams.status;
   const searchQuery = searchParams.search;
 
   const result = await listWorkItems({
@@ -29,7 +30,7 @@ export default async function WorkItemsListPage(props: {
             Operations Register
           </p>
           <h1 className="font-heading text-4xl font-black uppercase tracking-tight">
-            Work Items ({total})
+            Work Items ({result.ok ? total : "Unavailable"})
           </h1>
         </div>
         <Link
@@ -39,6 +40,8 @@ export default async function WorkItemsListPage(props: {
           &larr; Back to Dashboard
         </Link>
       </div>
+
+      {!result.ok && <AdminServiceError error={result.error} />}
 
       {/* Filter Bar */}
       <div className="flex flex-wrap items-center gap-2 border-2 border-ink bg-paper p-3 font-heading text-xs uppercase">
@@ -68,7 +71,9 @@ export default async function WorkItemsListPage(props: {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Work Items Table */}
         <div className="border-2 border-ink bg-paper p-6 shadow-[4px_4px_0px_0px_rgba(13,13,13,1)] lg:col-span-2">
-          {items.length === 0 ? (
+          {!result.ok ? (
+            <p className="text-xs font-bold text-rejection-red">Register unavailable.</p>
+          ) : items.length === 0 ? (
             <p className="text-xs italic text-ink/70">No work items match the filter.</p>
           ) : (
             <div className="overflow-x-auto">
@@ -109,9 +114,7 @@ export default async function WorkItemsListPage(props: {
                       <td className="py-3 pr-2 whitespace-nowrap">
                         <StatusBadge status={item.status} />
                       </td>
-                      <td className="py-3 pr-2 font-mono text-ink/60">
-                        v{item.version}
-                      </td>
+                      <td className="py-3 pr-2 font-mono text-ink/60">v{item.version}</td>
                       <td className="py-3 text-right whitespace-nowrap">
                         <Link
                           href={`/admin/work-items/${item.id}`}
@@ -151,7 +154,10 @@ export default async function WorkItemsListPage(props: {
             </div>
 
             <div>
-              <label htmlFor="description" className="block font-heading font-bold uppercase text-ink">
+              <label
+                htmlFor="description"
+                className="block font-heading font-bold uppercase text-ink"
+              >
                 Description
               </label>
               <textarea
@@ -184,7 +190,10 @@ export default async function WorkItemsListPage(props: {
               </div>
 
               <div>
-                <label htmlFor="priority" className="block font-heading font-bold uppercase text-ink">
+                <label
+                  htmlFor="priority"
+                  className="block font-heading font-bold uppercase text-ink"
+                >
                   Priority (0-100)
                 </label>
                 <input
@@ -200,7 +209,10 @@ export default async function WorkItemsListPage(props: {
             </div>
 
             <div>
-              <label htmlFor="blockedReason" className="block font-heading font-bold uppercase text-ink">
+              <label
+                htmlFor="blockedReason"
+                className="block font-heading font-bold uppercase text-ink"
+              >
                 Blocked Reason (if BLOCKED)
               </label>
               <input
@@ -214,7 +226,10 @@ export default async function WorkItemsListPage(props: {
             </div>
 
             <div>
-              <label htmlFor="evidenceUrl" className="block font-heading font-bold uppercase text-ink">
+              <label
+                htmlFor="evidenceUrl"
+                className="block font-heading font-bold uppercase text-ink"
+              >
                 Evidence URL (if DONE)
               </label>
               <input
@@ -228,7 +243,10 @@ export default async function WorkItemsListPage(props: {
             </div>
 
             <div>
-              <label htmlFor="completionNote" className="block font-heading font-bold uppercase text-ink">
+              <label
+                htmlFor="completionNote"
+                className="block font-heading font-bold uppercase text-ink"
+              >
                 Completion Note (if DONE)
               </label>
               <textarea

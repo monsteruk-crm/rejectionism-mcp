@@ -30,7 +30,8 @@ export function FormFeedback({ state }: { state: ActionResult | null | undefined
 
       {isConflict && (
         <p className="mt-2 text-xs font-semibold text-ink">
-          Another process or agent updated this record. Please reload the current record before submitting changes.
+          Another process or agent updated this record. Please reload the current record before
+          submitting changes.
         </p>
       )}
 

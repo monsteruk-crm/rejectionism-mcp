@@ -97,8 +97,8 @@ export default async function AdminDashboardPage() {
               item.alert
                 ? "bg-blood-red text-cream"
                 : item.highlight
-                ? "bg-rejection-red text-cream"
-                : "bg-paper text-ink"
+                  ? "bg-rejection-red text-cream"
+                  : "bg-paper text-ink"
             }`}
           >
             <span className="font-heading text-xs font-bold uppercase tracking-wider opacity-80">
@@ -303,9 +303,7 @@ export default async function AdminDashboardPage() {
                   <StatusBadge status={site.status} />
                 </div>
                 <p className="mt-1 text-xs text-ink/80">{site.name}</p>
-                {site.notes && (
-                  <p className="mt-1 text-[11px] text-ink/60">{site.notes}</p>
-                )}
+                {site.notes && <p className="mt-1 text-[11px] text-ink/60">{site.notes}</p>}
               </li>
             ))}
           </ul>
@@ -388,9 +386,7 @@ export default async function AdminDashboardPage() {
                     <td className="py-2 pr-4 font-bold text-ink whitespace-nowrap">
                       {act.entityType}
                     </td>
-                    <td className="py-2 pr-4 text-rejection-red whitespace-nowrap">
-                      {act.action}
-                    </td>
+                    <td className="py-2 pr-4 text-rejection-red whitespace-nowrap">{act.action}</td>
                     <td className="py-2 text-ink/90">{act.summary}</td>
                   </tr>
                 ))}

@@ -16,9 +16,7 @@ export interface ServiceError {
   fieldErrors?: Record<string, string[]>;
 }
 
-export type ServiceResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; error: ServiceError };
+export type ServiceResult<T> = { ok: true; data: T } | { ok: false; error: ServiceError };
 
 export function ok<T>(data: T): ServiceResult<T> {
   return { ok: true, data };
@@ -62,7 +60,11 @@ export function handleServiceError(error: unknown): ServiceResult<never> {
 
   const message = error instanceof Error ? error.message : String(error);
 
-  if (message.includes("DATABASE_URL") || message.includes("connect") || message.includes("Can't reach database")) {
+  if (
+    message.includes("DATABASE_URL") ||
+    message.includes("connect") ||
+    message.includes("Can't reach database")
+  ) {
     return fail("DATABASE_UNAVAILABLE", "The database is currently unreachable.");
   }
 

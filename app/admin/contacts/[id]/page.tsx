@@ -1,18 +1,21 @@
 import Link from "next/link";
+import { AdminServiceError } from "../../_components/service-error";
 import { notFound } from "next/navigation";
 import { getContactById } from "@/lib/campaign";
 import { updateContactAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditContactPage(props: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function EditContactPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const result = await getContactById(params.id);
 
   if (!result.ok) {
-    notFound();
+    if (result.error.code === "NOT_FOUND") {
+      notFound();
+    }
+
+    return <AdminServiceError error={result.error} />;
   }
 
   const contact = result.data;
@@ -65,7 +68,10 @@ export default async function EditContactPage(props: {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="organization" className="block font-heading font-bold uppercase text-ink">
+              <label
+                htmlFor="organization"
+                className="block font-heading font-bold uppercase text-ink"
+              >
                 Organization
               </label>
               <input

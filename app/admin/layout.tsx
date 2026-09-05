@@ -20,16 +20,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               Test Mode Disabled
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-base text-ink/80">
-              Rejectionism CampaignOS is running with test mode disabled.
-              In accordance with security guidelines, all campaign records and mutation capabilities are locked.
+              Rejectionism CampaignOS is running with test mode disabled. In accordance with
+              security guidelines, all campaign records and mutation capabilities are locked.
             </p>
             <div className="mx-auto mt-6 max-w-md border-2 border-ink bg-cream p-4 text-left">
               <p className="font-heading text-xs font-bold uppercase tracking-wider text-ink">
                 Required Configuration
               </p>
-              <p className="mt-1 font-mono text-xs text-ink/90">
-                UNAUTHENTICATED_TEST_MODE=true
-              </p>
+              <p className="mt-1 font-mono text-xs text-ink/90">UNAUTHENTICATED_TEST_MODE=true</p>
             </div>
           </div>
         ) : (

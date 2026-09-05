@@ -23,6 +23,7 @@ The operational headquarters for **REJECTIONISM**, the satirical art movement bu
 ## Architecture Overview
 
 CampaignOS exposes two primary interfaces powered by the same shared server-only domain service layer (`lib/campaign/`) and PostgreSQL database:
+
 1. **Admin Web Interface (`/admin`)**: Interactive operations dashboard and registers for Work Items, Canon, Decisions, Visual Assets, Websites, Content Pieces, and Contacts.
 2. **Remote MCP Server (`/api/mcp`)**: Stateless Model Context Protocol endpoint exposing 10 campaign management tools and bootstrap diagnostic tools for AI clients.
 
@@ -66,6 +67,7 @@ pnpm dev
 ```
 
 Visit:
+
 - **Admin Dashboard**: `http://localhost:3000/admin`
 - **Health Diagnostic**: `http://localhost:3000/api/health`
 - **MCP Endpoint**: `http://localhost:3000/api/mcp`
@@ -75,6 +77,7 @@ Visit:
 ## Connecting AI Clients (OpenAI Codex, Claude Desktop, ChatGPT)
 
 ### OpenAI Codex / Claude Desktop / Cursor (`claude_desktop_config.json`):
+
 ```json
 {
   "mcpServers": {
@@ -86,11 +89,13 @@ Visit:
 ```
 
 ### MCP Inspector (Interactive Tool Debugging):
+
 ```bash
 npx @modelcontextprotocol/inspector http://localhost:3000/api/mcp
 ```
 
 ### Running the Smoke Client:
+
 ```bash
 pnpm test:client -- http://localhost:3000
 ```

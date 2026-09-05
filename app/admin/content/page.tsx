@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { listContentItems, ContentStatus } from "@/lib/campaign";
+import { AdminServiceError } from "../_components/service-error";
+import { listContentItems } from "@/lib/campaign";
 import { StatusBadge } from "../_components/badge";
 import { createContentItemAction } from "../actions";
 
@@ -9,7 +10,7 @@ export default async function ContentListPage(props: {
   searchParams: Promise<{ status?: string }>;
 }) {
   const searchParams = await props.searchParams;
-  const statusFilter = searchParams.status as ContentStatus | undefined;
+  const statusFilter = searchParams.status;
 
   const result = await listContentItems({
     status: statusFilter,
@@ -27,7 +28,7 @@ export default async function ContentListPage(props: {
             Broadcast & Media
           </p>
           <h1 className="font-heading text-4xl font-black uppercase tracking-tight">
-            Campaign Content ({total})
+            Campaign Content ({result.ok ? total : "Unavailable"})
           </h1>
         </div>
         <Link
@@ -37,6 +38,8 @@ export default async function ContentListPage(props: {
           &larr; Back to Dashboard
         </Link>
       </div>
+
+      {!result.ok && <AdminServiceError error={result.error} />}
 
       {/* Filter Bar */}
       <div className="flex flex-wrap items-center gap-2 border-2 border-ink bg-paper p-3 font-heading text-xs uppercase">
@@ -64,7 +67,9 @@ export default async function ContentListPage(props: {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Content Table */}
         <div className="border-2 border-ink bg-paper p-6 shadow-[4px_4px_0px_0px_rgba(13,13,13,1)] lg:col-span-2">
-          {items.length === 0 ? (
+          {!result.ok ? (
+            <p className="text-xs font-bold text-rejection-red">Register unavailable.</p>
+          ) : items.length === 0 ? (
             <p className="text-xs italic text-ink/70">No content items match the filter.</p>
           ) : (
             <div className="overflow-x-auto">
@@ -104,7 +109,9 @@ export default async function ContentListPage(props: {
                         )}
                       </td>
                       <td className="py-3 pr-2 font-mono text-xs text-ink/70 whitespace-nowrap">
-                        {content.format} // {content.channel}
+                        {content.format}
+                        {" // "}
+                        {content.channel}
                       </td>
                       <td className="py-3 pr-2 whitespace-nowrap">
                         <StatusBadge status={content.status} />
@@ -164,7 +171,10 @@ export default async function ContentListPage(props: {
               </div>
 
               <div>
-                <label htmlFor="channel" className="block font-heading font-bold uppercase text-ink">
+                <label
+                  htmlFor="channel"
+                  className="block font-heading font-bold uppercase text-ink"
+                >
                   Channel *
                 </label>
                 <input
@@ -196,7 +206,10 @@ export default async function ContentListPage(props: {
             </div>
 
             <div>
-              <label htmlFor="scheduledFor" className="block font-heading font-bold uppercase text-ink">
+              <label
+                htmlFor="scheduledFor"
+                className="block font-heading font-bold uppercase text-ink"
+              >
                 Scheduled For (if SCHEDULED)
               </label>
               <input
@@ -208,7 +221,10 @@ export default async function ContentListPage(props: {
             </div>
 
             <div>
-              <label htmlFor="publishedUrl" className="block font-heading font-bold uppercase text-ink">
+              <label
+                htmlFor="publishedUrl"
+                className="block font-heading font-bold uppercase text-ink"
+              >
                 Published URL (if PUBLISHED)
               </label>
               <input

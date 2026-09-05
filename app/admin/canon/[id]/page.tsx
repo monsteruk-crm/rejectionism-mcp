@@ -1,18 +1,21 @@
 import Link from "next/link";
+import { AdminServiceError } from "../../_components/service-error";
 import { notFound } from "next/navigation";
 import { getCanonEntryById } from "@/lib/campaign";
 import { updateCanonEntryAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditCanonEntryPage(props: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function EditCanonEntryPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const result = await getCanonEntryById(params.id);
 
   if (!result.ok) {
-    notFound();
+    if (result.error.code === "NOT_FOUND") {
+      notFound();
+    }
+
+    return <AdminServiceError error={result.error} />;
   }
 
   const entry = result.data;
@@ -24,9 +27,7 @@ export default async function EditCanonEntryPage(props: {
           <p className="font-heading text-xs font-bold uppercase tracking-wider text-rejection-red">
             Edit Canon Entry // {entry.key}
           </p>
-          <h1 className="font-heading text-3xl font-black uppercase tracking-tight">
-            {entry.key}
-          </h1>
+          <h1 className="font-heading text-3xl font-black uppercase tracking-tight">{entry.key}</h1>
         </div>
         <Link
           href="/admin/canon"

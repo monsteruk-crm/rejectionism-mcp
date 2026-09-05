@@ -1,13 +1,7 @@
 import "server-only";
 import { getPrisma } from "@/lib/prisma";
 import { isTestModeEnabled } from "./test-mode";
-import {
-  ok,
-  fail,
-  testModeDisabledResult,
-  handleServiceError,
-  ServiceResult,
-} from "./results";
+import { ok, fail, testModeDisabledResult, handleServiceError, ServiceResult } from "./results";
 import {
   CreateContentItemInputSchema,
   UpdateContentItemInputSchema,
@@ -274,7 +268,9 @@ export async function getContentItemById(id: string): Promise<ServiceResult<Cont
 
 export async function listContentItems(
   rawQuery: unknown = {},
-): Promise<ServiceResult<{ items: ContentItemDto[]; total: number; limit: number; offset: number }>> {
+): Promise<
+  ServiceResult<{ items: ContentItemDto[]; total: number; limit: number; offset: number }>
+> {
   if (!isTestModeEnabled()) {
     return testModeDisabledResult();
   }

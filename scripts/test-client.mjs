@@ -1,23 +1,67 @@
-import {
-  Client,
-  StreamableHTTPClientTransport,
-} from "@modelcontextprotocol/client";
+import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
+import { z } from "zod";
 
 const args = process.argv.slice(2).filter((arg) => arg !== "--");
 
 const origin =
-  args.find((a) => a.startsWith("http://") || a.startsWith("https://")) ||
-  "http://localhost:3000";
+  args.find((a) => a.startsWith("http://") || a.startsWith("https://")) || "http://localhost:3000";
 
 const pathArg = args.find((a) => a.startsWith("--path="));
 const endpointPath = pathArg ? pathArg.split("=")[1] : "/api/mcp";
 const allowWrites = args.includes("--test-writes");
+const disposableDatabase = args.includes("--disposable-database");
+
+const textContentSchema = z
+  .array(z.object({ type: z.literal("text"), text: z.string().min(1) }).passthrough())
+  .min(1);
+
+const requiredResultSchemas = {
+  echo: z.object({ message: z.literal("Smoke test ping") }).strict(),
+  check_database: z
+    .object({
+      status: z.literal("ok"),
+      result: z.literal(1),
+      latencyMs: z.number().int().nonnegative(),
+    })
+    .strict(),
+  campaign_get_status: z.object({ workItemCounts: z.record(z.string(), z.number()) }).passthrough(),
+  campaign_list_work_items: z
+    .object({
+      items: z.array(z.object({ id: z.string() }).passthrough()),
+      total: z.number().int().nonnegative(),
+    })
+    .passthrough(),
+  campaign_get_canon: z.discriminatedUnion("mode", [
+    z
+      .object({
+        mode: z.literal("single"),
+        entry: z.object({ key: z.literal("movement.name") }).passthrough(),
+      })
+      .passthrough(),
+    z.object({ mode: z.literal("collection"), items: z.array(z.unknown()) }).passthrough(),
+  ]),
+};
+
+function assertSuccessfulResult(toolName, result) {
+  if (result.isError) {
+    throw new Error(`${toolName} returned an error: ${JSON.stringify(result.content)}`);
+  }
+
+  textContentSchema.parse(result.content);
+  requiredResultSchemas[toolName].parse(result.structuredContent);
+}
 
 async function main() {
   console.log(`=== Rejectionism CampaignOS MCP Smoke Test ===`);
   console.log(`Target origin:   ${origin}`);
   console.log(`Endpoint path:   ${endpointPath}`);
   console.log(`Test write ops:  ${allowWrites ? "ENABLED" : "DISABLED (read-only mode)"}`);
+
+  if (allowWrites && !disposableDatabase) {
+    throw new Error(
+      "--test-writes requires --disposable-database so smoke records cannot pollute persistent data.",
+    );
+  }
 
   const client = new Client({
     name: "rejectionism-mcp-smoke-client",
@@ -70,9 +114,7 @@ async function main() {
       name: "echo",
       arguments: { message: "Smoke test ping" },
     });
-    if (echoResult.isError) {
-      throw new Error(`'echo' tool returned an error: ${JSON.stringify(echoResult)}`);
-    }
+    assertSuccessfulResult("echo", echoResult);
     console.log("   Echo passed:", echoResult.content?.[0]?.text);
 
     console.log("\n4. Testing 'check_database' tool...");
@@ -80,50 +122,39 @@ async function main() {
       name: "check_database",
       arguments: {},
     });
-    if (dbResult.isError) {
-      console.warn("   Database check failed (database may be unreachable or unconfigured):", dbResult.content?.[0]?.text);
-    } else {
-      console.log("   Database check passed:", dbResult.content?.[0]?.text);
-    }
+    assertSuccessfulResult("check_database", dbResult);
+    console.log("   Database check passed:", dbResult.content?.[0]?.text);
 
     console.log("\n5. Testing 'campaign_get_status' tool...");
     const statusResult = await client.callTool({
       name: "campaign_get_status",
       arguments: {},
     });
-    if (statusResult.isError) {
-      console.warn("   campaign_get_status returned error (test mode may be disabled or DB unreachable):", statusResult.content?.[0]?.text);
-    } else {
-      console.log("   campaign_get_status passed:", statusResult.content?.[0]?.text);
-    }
+    assertSuccessfulResult("campaign_get_status", statusResult);
+    console.log("   campaign_get_status passed:", statusResult.content?.[0]?.text);
 
     console.log("\n6. Testing 'campaign_list_work_items' tool...");
     const workResult = await client.callTool({
       name: "campaign_list_work_items",
       arguments: { limit: 5 },
     });
-    if (workResult.isError) {
-      console.warn("   campaign_list_work_items returned error:", workResult.content?.[0]?.text);
-    } else {
-      console.log("   campaign_list_work_items passed:", workResult.content?.[0]?.text);
-    }
+    assertSuccessfulResult("campaign_list_work_items", workResult);
+    console.log("   campaign_list_work_items passed:", workResult.content?.[0]?.text);
 
     console.log("\n7. Testing 'campaign_get_canon' tool...");
     const canonResult = await client.callTool({
       name: "campaign_get_canon",
       arguments: { key: "movement.name" },
     });
-    if (canonResult.isError) {
-      console.warn("   campaign_get_canon returned error:", canonResult.content?.[0]?.text);
-    } else {
-      console.log("   campaign_get_canon passed:", canonResult.content?.[0]?.text);
-    }
+    assertSuccessfulResult("campaign_get_canon", canonResult);
+    console.log("   campaign_get_canon passed:", canonResult.content?.[0]?.text);
 
     if (allowWrites) {
       console.log("\n8. Testing write operation 'campaign_create_work_item'...");
       const createResult = await client.callTool({
         name: "campaign_create_work_item",
         arguments: {
+          id: `smoke-${crypto.randomUUID()}`,
           title: "Temporary Smoke Test Item",
           description: "Created by smoke test script to verify write flow.",
           status: "BACKLOG",
@@ -134,6 +165,10 @@ async function main() {
       if (createResult.isError) {
         throw new Error(`Write operation failed: ${createResult.content?.[0]?.text}`);
       }
+      textContentSchema.parse(createResult.content);
+      z.object({ id: z.string(), version: z.literal(1) })
+        .passthrough()
+        .parse(createResult.structuredContent);
       console.log("   Write operation passed:", createResult.content?.[0]?.text);
     }
 
