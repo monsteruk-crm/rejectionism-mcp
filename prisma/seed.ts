@@ -1,4 +1,8 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+
+dotenv.config({ path: ".env.local" });
+dotenv.config({ path: ".env" });
+
 import { seedCampaignData } from "../lib/campaign/seed";
 
 async function main() {

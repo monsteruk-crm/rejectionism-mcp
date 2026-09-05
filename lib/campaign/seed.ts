@@ -295,13 +295,14 @@ export async function seedCampaignData(): Promise<ServiceResult<SeedResultSummar
         }
       },
       {
-        maxWait: 5000,
-        timeout: 20000,
+        maxWait: 30000,
+        timeout: 180000,
       },
     );
 
     return ok(summary);
   } catch (error) {
+    console.error("Seed execution error:", error instanceof Error ? error.message : error);
     return handleServiceError(error);
   }
 }
