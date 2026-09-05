@@ -27,7 +27,17 @@ async function main() {
     name: "echo",
     arguments: { message: "Hello from the MCP client" },
   });
-  console.log("Result", result);
+  console.log("Echo result", result);
+
+  const databaseResult = await client.callTool({
+    name: "check_database",
+    arguments: {},
+  });
+  console.log("Database result", databaseResult);
+
+  if (databaseResult.isError) {
+    throw new Error("Prisma database check failed");
+  }
 
   await client.close();
 }

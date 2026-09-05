@@ -26,7 +26,7 @@ http://localhost:3000/mcp
 
 ## Sample Client
 
-`scripts/test-client.mjs` connects over Streamable HTTP, lists the available tools, and calls `echo`.
+`scripts/test-client.mjs` connects over Streamable HTTP, lists the available tools, calls `echo`, and runs the read-only `check_database` Prisma connectivity query.
 
 ```sh
 pnpm test:client -- https://mcp-for-next-js.vercel.app
