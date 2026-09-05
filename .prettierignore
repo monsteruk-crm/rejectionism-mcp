@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+build/
+coverage/
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+app/generated/
+docs/sources/
+temp/
+AGENTS.md
+WARP.md
+.agents/
+next-env.d.ts
+*.tsbuildinfo

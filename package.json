@@ -4,12 +4,22 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate --config prisma7.config.ts && next build",
     "start": "next start",
     "type-check": "tsc --noEmit",
     "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:client": "node scripts/test-client.mjs",
-    "postinstall": "prisma generate"
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:validate": "prisma validate --config prisma7.config.ts",
+    "db:generate": "prisma generate --config prisma7.config.ts",
+    "db:migrate": "prisma migrate dev --config prisma7.config.ts",
+    "db:deploy": "prisma migrate deploy --config prisma7.config.ts",
+    "db:seed": "prisma db seed --config prisma7.config.ts",
+    "postinstall": "prisma generate --config prisma7.config.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",
@@ -17,27 +27,33 @@
     "@prisma/client": "7.10.0",
     "dotenv": "^17.4.2",
     "mcp-handler": "^2.0.0",
-    "next": "^15.2.6",
+    "next": "^16.3.4",
     "pg": "^8.23.0",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "server-only": "^0.0.1",
     "zod": "^4.2.0"
   },
   "devDependencies": {
     "@eslint/compat": "^2.0.0",
     "@eslint/eslintrc": "^3.3.3",
     "@modelcontextprotocol/client": "^2.0.0",
-    "@types/node": "^20",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^22",
     "@types/pg": "^8.23.1",
-    "@types/react": "^19",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
     "eslint": "^9",
-    "eslint-config-next": "^15.2.6",
+    "eslint-config-next": "^16.3.4",
+    "prettier": "^3.9.6",
     "prisma": "7.10.0",
+    "tailwindcss": "^4.3.3",
     "tsx": "^4.23.13",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.0.0"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.19"
   },
   "packageManager": "pnpm@8.15.7+sha512.c85cd21b6da10332156b1ca2aa79c0a61ee7ad2eb0453b88ab299289e9e8ca93e6091232b25c07cbf61f6df77128d9c849e5c9ac6e44854dbd211c49f3a67adc"
 }
