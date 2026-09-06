@@ -4,12 +4,15 @@ Use pnpm 8.15.7 and a Prisma-compatible Node release: **20.19+**, **22.12+**, or
 
 ## Setup
 
-1. Copy `.env.example` to `.env` (or configure your development database):
+1. Copy `.env.example` to `.env.local` (or configure your development database):
    ```bash
-   cp .env.example .env
+   cp .env.example .env.local
    ```
 2. Set `MCP_PRISMA_DATABASE_URL` to your local or development PostgreSQL database (named `MCP_PRISMA_DATABASE_URL` because Vercel reserves `DATABASE_URL`).
-3. Set `CAMPAIGNOS_PASSWORD` to a generated 32–256 character credential (allowed: letters, digits, `-`, `_`). It is the admin login password and the MCP Bearer token. `CAMPAIGNOS_BASE_URL` defaults to `http://localhost:3000` in development. Missing or invalid configuration fails closed (ADR 0003).
+3. Set `TEST_MCP_PRISMA_DATABASE_URL` to a disposable PostgreSQL database for integration tests.
+4. Set `CAMPAIGNOS_PASSWORD` to a generated 32–256 character credential (allowed: letters, digits, `-`, `_`). It is the admin login password and the MCP Bearer token.
+5. Set `BLOB_READ_WRITE_TOKEN` to your private Vercel Blob store token.
+6. `CAMPAIGNOS_BASE_URL` defaults to `http://localhost:3000` in development. Missing or invalid configuration fails closed (ADR 0003).
 
 ```bash
 pnpm install

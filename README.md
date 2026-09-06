@@ -11,8 +11,11 @@ The operational headquarters for **REJECTIONISM**, the satirical art movement bu
 - [Documentation Index](docs/00-index.md)
 - [Current Project Status](docs/STATUS.md)
 - [Project Architecture & Context](docs/PROJECT-CONTEXT.md)
-- [MCP Tools Contract](docs/contracts/mcp-tools.md)
+- [MCP Tools Contract (47 Tools)](docs/contracts/mcp-tools.md)
+- [Assets and Uploads Contract](docs/contracts/assets-and-uploads.md)
+- [Asset Storage & Blob Runbook](docs/runbooks/asset-storage.md)
 - [Local Development Runbook](docs/runbooks/local-development.md)
+- [Manual Acceptance Scenarios](docs/runbooks/manual-acceptance.md)
 - [Vercel Deployment Runbook](docs/runbooks/vercel-deployment.md)
 - [Architecture Decision Records (ADRs)](docs/adr/README.md)
 
@@ -22,32 +25,43 @@ The operational headquarters for **REJECTIONISM**, the satirical art movement bu
 
 CampaignOS exposes two primary interfaces powered by the same shared server-only domain service layer (`lib/campaign/`) and PostgreSQL database:
 
-1. **Admin Web Interface (`/admin`)**: Interactive operations dashboard and registers for Work Items, Canon, Decisions, Visual Assets, Websites, Content Pieces, and Contacts.
-2. **Remote MCP Server (`/api/mcp`)**: Stateless Model Context Protocol endpoint exposing 10 campaign management tools and bootstrap diagnostic tools for AI clients.
+1. **Admin Web Interface (`/admin`)**:
+   - Operations Command Dashboard (Now, Next, Blocked, Missing Assets, Websites, Decisions, Activity feed).
+   - Filterable Visual Asset Library (`/admin/assets`) with raster previews, format placeholders, and storage badges.
+   - Asset Revisions & Representations management (`/admin/assets/[id]`) with primary representation switcher and external URL appends.
+   - Single-use capability Upload Links management (`/admin/upload-links`) with one-time raw link display and regeneration.
+   - Admin Bulk Ingestion (`/admin/assets/upload`) with grouping mode selection and direct multi-row Blob uploads.
+   - Global Search (`/admin/search`) across all 7 registers and polymorphic tag associations.
+   - Management screens for Work Items, Canon, Decisions, Websites, Content Pieces, and Contacts.
 
-All mutations use optimistic concurrency control (`expectedVersion`) and record an auditable `Activity` entry in the same database transaction.
+2. **Remote MCP Server (`/api/mcp` and legacy `/mcp`)**:
+   - Stateless Model Context Protocol endpoint exposing 47 tools across all registers, diagnostics, uploads, relationships, tags, and search.
+
+3. **Public Upload Portal (`/upload/[token]`)**:
+   - Capability-authorized, unauthenticated contributor submission page with real-time Blob uploads, server-side format/dimension verification, and atomic finalization.
 
 ---
 
 ## Environment Configuration
 
-Configure the following variables in `.env` (or Vercel settings):
+Configure the following five environment variables:
 
 ```env
 # PostgreSQL connection string for Prisma pg adapter
-# (named MCP_PRISMA_DATABASE_URL because Vercel reserves DATABASE_URL)
 MCP_PRISMA_DATABASE_URL=postgresql://user:password@localhost:5432/campaignos
 
-# Shared credential: admin login password and MCP Bearer token
-# 32-256 characters, allowed: letters, digits, `-`, `_`
+# Disposable PostgreSQL database URL for integration tests (must differ from operational URL)
+TEST_MCP_PRISMA_DATABASE_URL=postgresql://user:password@localhost:5432/campaignos_test
+
+# Shared credential: admin login password and MCP Bearer token (32-256 characters)
 CAMPAIGNOS_PASSWORD=generate-a-long-random-credential
 
-# Application origin used as the trusted origin for auth checks
-# (optional in development, defaults to http://localhost:3000; HTTPS required in production)
+# Server-only private Vercel Blob read/write token
+BLOB_READ_WRITE_TOKEN=vercel_blob_rw_xxxxxxxxxxxx
+
+# Application origin used for auth and capability URL construction (HTTPS in production)
 CAMPAIGNOS_BASE_URL=http://localhost:3000
 ```
-
-Authentication fails closed: without a valid `CAMPAIGNOS_PASSWORD`, `/admin` redirects to `/login` with a configuration notice and all MCP requests receive HTTP 401 `AUTH_REQUIRED`.
 
 ---
 
@@ -60,27 +74,30 @@ pnpm install
 # 2. Generate Prisma client
 pnpm db:generate
 
-# 3. Apply migrations to your local/dev database
-pnpm db:migrate
+# 3. Apply migrations to your database
+pnpm db:deploy
 
-# 4. Seed canonical Rejectionism data
+# 4. Backfill legacy asset representations (idempotent)
+pnpm db:backfill-assets
+
+# 5. Seed canonical Rejectionism data
 pnpm db:seed
 
-# 5. Start development server
+# 6. Start development server
 pnpm dev
 ```
 
 Visit:
-
 - **Admin Dashboard**: `http://localhost:3000/admin`
+- **Global Search**: `http://localhost:3000/admin/search`
+- **Asset Library**: `http://localhost:3000/admin/assets`
+- **Upload Links**: `http://localhost:3000/admin/upload-links`
 - **Health Diagnostic**: `http://localhost:3000/api/health`
 - **MCP Endpoint**: `http://localhost:3000/api/mcp`
 
 ---
 
-## Connecting AI Clients (OpenAI Codex, Claude Desktop, ChatGPT)
-
-### OpenAI Codex / Claude Desktop / Cursor (`claude_desktop_config.json`):
+## Connecting AI Clients (OpenAI Codex, Claude Desktop, Cursor)
 
 MCP requests require `Authorization: Bearer <CAMPAIGNOS_PASSWORD>`.
 
@@ -97,22 +114,8 @@ MCP requests require `Authorization: Bearer <CAMPAIGNOS_PASSWORD>`.
 }
 ```
 
-### MCP Inspector (Interactive Tool Debugging):
-
-```bash
-npx @modelcontextprotocol/inspector http://localhost:3000/api/mcp
-```
-
 ### Running the Smoke Client:
 
 ```bash
 pnpm test:client -- http://localhost:3000
 ```
-
----
-
-## Roadmap
-
-Authentication is implemented (single shared credential with stateless signed sessions, [ADR 0003](docs/adr/0003-single-password-boundary-authentication.md)). Per-user identity providers (OAuth 2.0 / CIMD) remain future work. Upcoming milestones add asset storage, Blob-backed uploads with upload links, MCP/Admin management parity, and global search.
-
-

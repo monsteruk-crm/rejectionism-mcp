@@ -15,37 +15,64 @@ export interface ContactDto {
   name: string;
   organization: string | null;
   role: string | null;
-  email: string | null;
+  email?: string | null;
   status: string;
-  notes: string | null;
+  notes?: string | null;
   version: number;
   createdAt: string;
   updatedAt: string;
 }
 
-export function mapContactToDto(item: {
+export interface ContactSummaryDto {
   id: string;
   name: string;
   organization: string | null;
   role: string | null;
-  email: string | null;
   status: string;
-  notes: string | null;
   version: number;
-  createdAt: Date;
-  updatedAt: Date;
-}): ContactDto {
-  return {
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ContactDetailDto extends ContactSummaryDto {
+  email: string | null;
+  notes: string | null;
+}
+
+export function mapContactToDto(
+  item: {
+    id: string;
+    name: string;
+    organization: string | null;
+    role: string | null;
+    email: string | null;
+    status: string;
+    notes: string | null;
+    version: number;
+    createdAt: Date;
+    updatedAt: Date;
+  },
+  includePrivateFields: boolean = false,
+): ContactDto {
+  const summary: ContactSummaryDto = {
     id: item.id,
     name: item.name,
     organization: item.organization,
     role: item.role,
-    email: item.email,
     status: item.status,
-    notes: item.notes,
     version: item.version,
     createdAt: item.createdAt.toISOString(),
     updatedAt: item.updatedAt.toISOString(),
+  };
+
+  if (!includePrivateFields) {
+    return summary;
+  }
+
+  return {
+    ...summary,
+    email: item.email,
+    notes: item.notes,
   };
 }
 
@@ -92,7 +119,7 @@ export async function createContact(
       return created;
     });
 
-    return ok(mapContactToDto(result));
+    return ok(mapContactToDto(result, false));
   } catch (error) {
     return handleServiceError(error);
   }
@@ -168,7 +195,7 @@ export async function updateContact(
       return updated!;
     });
 
-    return ok(mapContactToDto(result));
+    return ok(mapContactToDto(result, false));
   } catch (error) {
     const msg = error instanceof Error ? error.message : "";
     if (msg === "NOT_FOUND") {
@@ -184,7 +211,10 @@ export async function updateContact(
   }
 }
 
-export async function getContactById(id: string): Promise<ServiceResult<ContactDto>> {
+export async function getContactById(
+  id: string,
+  includePrivateFields: boolean = false,
+): Promise<ServiceResult<ContactDto>> {
   try {
     const prisma = getPrisma();
     const item = await prisma.contact.findUnique({
@@ -195,7 +225,7 @@ export async function getContactById(id: string): Promise<ServiceResult<ContactD
       return fail("NOT_FOUND", `Contact with ID ${id} not found.`);
     }
 
-    return ok(mapContactToDto(item));
+    return ok(mapContactToDto(item, includePrivateFields));
   } catch (error) {
     return handleServiceError(error);
   }
@@ -209,7 +239,7 @@ export async function listContacts(
     return handleServiceError(parsed.error);
   }
 
-  const { limit, offset } = parsed.data;
+  const { includePrivateFields, limit, offset } = parsed.data;
 
   try {
     const prisma = getPrisma();
@@ -223,7 +253,7 @@ export async function listContacts(
     ]);
 
     return ok({
-      items: items.map(mapContactToDto),
+      items: items.map((item) => mapContactToDto(item, includePrivateFields)),
       total,
       limit,
       offset,

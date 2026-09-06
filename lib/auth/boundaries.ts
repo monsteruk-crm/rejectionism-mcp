@@ -99,3 +99,52 @@ export async function authenticateMcpRequest(
 
   return { ok: true };
 }
+
+export type FileAuthOutcome = { ok: true } | { ok: false; response: NextResponse };
+
+/**
+ * Authentication for private file retrieval (/api/assets/representations/[id]/file).
+ * Accepts either a valid admin session cookie OR the MCP Bearer credential.
+ * Upload capability tokens cannot access private files.
+ */
+export async function authenticateFileRequest(req: {
+  headers: { get(name: string): string | null };
+  cookies?: { get(name: string): { value?: string } | undefined };
+}): Promise<FileAuthOutcome> {
+  // Check session cookie first
+  const cookieHeader = req.headers.get("cookie") ?? "";
+  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${SESSION_COOKIE_NAME}=([^;]+)`));
+  const cookieVal = match ? match[1] : undefined;
+  if (cookieVal && verifySessionToken(cookieVal).valid) {
+    return { ok: true };
+  }
+
+  // Check Bearer authorization
+  const authHeader = req.headers.get("authorization");
+  if (authHeader && /^Bearer\s+/i.test(authHeader)) {
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    if (bearerTokenMatches(token)) {
+      return { ok: true };
+    }
+  }
+
+  return {
+    ok: false,
+    response: NextResponse.json(
+      {
+        ok: false,
+        error: {
+          code: "AUTH_REQUIRED",
+          message: "Authentication required via session cookie or Bearer credential.",
+        },
+      },
+      {
+        status: 401,
+        headers: {
+          "WWW-Authenticate": 'Bearer realm="CampaignOS"',
+          "Cache-Control": "no-store",
+        },
+      },
+    ),
+  };
+}

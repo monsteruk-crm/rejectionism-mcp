@@ -10,6 +10,7 @@ import {
   recordDecision,
   createAsset,
   updateAsset,
+  createWebsite,
   updateWebsite,
   createContact,
   updateContact,
@@ -233,6 +234,19 @@ export async function updateAssetAction(formData: FormData): Promise<void> {
 // -------------------------------------------------------------
 // Websites
 // -------------------------------------------------------------
+export async function createWebsiteAction(formData: FormData): Promise<void> {
+  await requireAdminAction();
+  const raw = formDataToObject(formData);
+  const res = await createWebsite(raw, "admin");
+
+  if (!res.ok) {
+    throw new Error(`[${res.error.code}] ${res.error.message}`);
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/websites");
+}
+
 export async function updateWebsiteAction(formData: FormData): Promise<void> {
   await requireAdminAction();
   const id = formData.get("id") as string;

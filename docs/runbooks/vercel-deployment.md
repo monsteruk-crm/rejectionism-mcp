@@ -16,7 +16,9 @@ Configure these variables in Vercel Project Settings > Environment Variables:
 | Variable                    | Description                                                                              | Example                                                   |
 | --------------------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------------- |
 | `MCP_PRISMA_DATABASE_URL`   | Direct PostgreSQL connection string for the `pg` driver adapter. Named `MCP_PRISMA_DATABASE_URL` because Vercel reserves `DATABASE_URL`. | `postgresql://user:pass@host:5432/dbname?sslmode=require` |
+| `TEST_MCP_PRISMA_DATABASE_URL` | Disposable PostgreSQL database for integration test runner (never use production).      | `postgresql://user:pass@host:5432/testdb?sslmode=require` |
 | `CAMPAIGNOS_PASSWORD`       | Required shared credential (32–256 chars: letters, digits, `-`, `_`). Admin login password and MCP Bearer token. Missing/invalid value fails closed. | (generated secret)                                        |
+| `BLOB_READ_WRITE_TOKEN`     | Server-only private Vercel Blob store token for uploaded file storage.                   | `vercel_blob_rw_xxxxxxxxxxxx`                             |
 | `CAMPAIGNOS_BASE_URL`       | Required application origin (HTTPS in production; no path, query, fragment, or credentials). Trusted-origin source for auth checks. | `https://your-domain.example`                             |
 
 > **Security Warning**: `/admin` and MCP require authentication (single shared credential, ADR 0003). Rotating `CAMPAIGNOS_PASSWORD` invalidates all admin sessions and MCP credentials at once. Do not commit or leak the credential.
@@ -108,5 +110,5 @@ npx @modelcontextprotocol/inspector http://localhost:3000/api/mcp
 ```
 
 1. Open the inspector URL in your browser.
-2. Verify all 12 tools are listed (`echo`, `check_database`, plus 10 `campaign_*` tools).
+2. Verify all 47 tools are listed (`echo`, `check_database`, plus 45 `campaign_*` tools).
 3. Execute `campaign_get_status` with `{}` to verify the live operational state.

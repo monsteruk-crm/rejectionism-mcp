@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ContactsListPage() {
   await requireAdminPage();
-  const result = await listContacts({ limit: 100 });
+  const result = await listContacts({ includePrivateFields: true, limit: 100 });
   const contacts = result.ok ? result.data.items : [];
   const total = result.ok ? result.data.total : 0;
 

@@ -2,16 +2,33 @@ import { requireAdminPage } from "@/lib/auth/boundaries";
 import Link from "next/link";
 import { AdminServiceError } from "../../_components/service-error";
 import { notFound } from "next/navigation";
-import { getContentItemById } from "@/lib/campaign";
+import { getContentItemById, getRelationships } from "@/lib/campaign";
+import { getPrisma } from "@/lib/prisma";
 import { updateContentItemAction } from "../../actions";
 import { StatusBadge } from "../../_components/badge";
+import { EntityConnections } from "../../_components/entity-connections";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditContentItemPage(props: { params: Promise<{ id: string }> }) {
   await requireAdminPage();
   const params = await props.params;
-  const result = await getContentItemById(params.id);
+  const prisma = getPrisma();
+
+  const [result, tagRows, relRes] = await Promise.all([
+    getContentItemById(params.id),
+    prisma.entityTag.findMany({
+      where: { entityType: "CONTENT_ITEM", entityId: params.id },
+      include: { tag: true },
+      orderBy: { tag: { slug: "asc" } },
+    }),
+    getRelationships({
+      entityType: "CONTENT_ITEM",
+      entityId: params.id,
+      direction: "both",
+      limit: 50,
+    }),
+  ]);
 
   if (!result.ok) {
     if (result.error.code === "NOT_FOUND") {
@@ -23,6 +40,13 @@ export default async function EditContentItemPage(props: { params: Promise<{ id:
 
   const content = result.data;
   const scheduledDateVal = content.scheduledFor ? content.scheduledFor.slice(0, 10) : "";
+  const tags = tagRows.map((r) => ({
+    id: r.tag.id,
+    name: r.tag.name,
+    slug: r.tag.slug,
+    createdAt: r.tag.createdAt.toISOString(),
+  }));
+  const relationships = relRes.ok ? relRes.data.items : [];
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
@@ -186,6 +210,15 @@ export default async function EditContentItemPage(props: { params: Promise<{ id:
           </div>
         </form>
       </div>
+
+      {/* Entity Connections */}
+      <EntityConnections
+        entityType="CONTENT_ITEM"
+        entityId={content.id}
+        tags={tags}
+        relationships={relationships}
+        currentHref={`/admin/content/${content.id}`}
+      />
     </div>
   );
 }
