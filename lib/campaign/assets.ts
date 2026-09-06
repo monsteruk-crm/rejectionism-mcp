@@ -27,6 +27,7 @@ import {
   mapAssetDetailToDto,
   mapRepresentationToDto,
 } from "./asset-dtos";
+import { AddExternalAssetInputSchema } from "./asset-schemas";
 import { Prisma } from "@/app/generated/prisma/client";
 
 export interface AssetDto {
@@ -417,6 +418,80 @@ export async function getAssetById(id: string): Promise<ServiceResult<AssetDetai
   }
 }
 
+export async function addExternalAsset(
+  rawInput: unknown,
+  source: MutationSource = "admin",
+): Promise<ServiceResult<AssetDetailDto>> {
+  const parsed = AddExternalAssetInputSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return handleServiceError(parsed.error);
+  }
+
+  const { asset: assetInput, representation: repInput } = parsed.data;
+
+  try {
+    const prisma = getPrisma();
+
+    const created = await prisma.$transaction(async (tx) => {
+      const asset = await tx.asset.create({
+        data: {
+          ...(assetInput.id ? { id: assetInput.id } : {}),
+          name: assetInput.name,
+          kind: assetInput.kind,
+          status: assetInput.status,
+          notes: assetInput.notes,
+          sourceFilename: repInput.sourceFilename ?? null,
+          url: repInput.externalUrl,
+          version: 1,
+        },
+      });
+
+      const revision = await tx.assetRevision.create({
+        data: {
+          assetId: asset.id,
+          revisionNumber: 1,
+        },
+      });
+
+      const representation = await tx.assetRepresentation.create({
+        data: {
+          assetRevisionId: revision.id,
+          storageType: "EXTERNAL_URL",
+          label: repInput.label ?? null,
+          notes: repInput.notes ?? null,
+          variant: repInput.variant ?? null,
+          format: repInput.format ?? null,
+          sourceFilename: repInput.sourceFilename ?? null,
+          externalUrl: repInput.externalUrl,
+          legacyAssetId: asset.id,
+          isPrimary: true,
+        },
+      });
+
+      await createActivityTx(tx, {
+        entityType: "ASSET",
+        entityId: asset.id,
+        action: "CREATED",
+        summary: `Created asset with external representation: ${asset.name}`,
+        source,
+        metadata: {
+          name: asset.name,
+          kind: asset.kind,
+          status: asset.status,
+          version: asset.version,
+          representationId: representation.id,
+        },
+      });
+
+      return asset;
+    });
+
+    return await getAssetById(created.id);
+  } catch (error) {
+    return handleServiceError(error);
+  }
+}
+
 export async function listAssets(
   rawQuery: unknown = {},
 ): Promise<ServiceResult<{ items: AssetListDto[]; total: number; limit: number; offset: number }>> {
@@ -425,7 +500,7 @@ export async function listAssets(
     return handleServiceError(parsed.error);
   }
 
-  const { status, kind, tags, limit, offset } = parsed.data;
+  const { status, kind, search, storageType, tags, limit, offset } = parsed.data;
 
   try {
     const prisma = getPrisma();
@@ -438,6 +513,43 @@ export async function listAssets(
 
     if (kind && kind.trim().length > 0) {
       where.kind = { contains: kind, mode: "insensitive" };
+    }
+
+    if (search && search.trim().length > 0) {
+      const q = search.trim();
+      where.OR = [
+        { name: { contains: q, mode: "insensitive" } },
+        { kind: { contains: q, mode: "insensitive" } },
+        { notes: { contains: q, mode: "insensitive" } },
+        { sourceFilename: { contains: q, mode: "insensitive" } },
+        {
+          revisions: {
+            some: {
+              representations: {
+                some: {
+                  OR: [
+                    { label: { contains: q, mode: "insensitive" } },
+                    { notes: { contains: q, mode: "insensitive" } },
+                    { sourceFilename: { contains: q, mode: "insensitive" } },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      ];
+    }
+
+    if (storageType) {
+      where.revisions = {
+        some: {
+          representations: {
+            some: {
+              storageType,
+            },
+          },
+        },
+      };
     }
 
     // Tag predicate: assets must carry ALL requested slugs; an unknown slug

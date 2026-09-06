@@ -26,5 +26,7 @@ export * from "./upload-cleanup";
 export * from "./websites";
 export * from "./contacts";
 export * from "./content";
+export * from "./search-schemas";
+export * from "./search";
 export * from "./status";
 export * from "./seed";

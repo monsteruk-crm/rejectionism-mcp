@@ -3,10 +3,12 @@ import { logoutAction } from "../../login/actions";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/admin" },
+  { label: "Search", href: "/admin/search" },
   { label: "Work Items", href: "/admin/work-items" },
   { label: "Canon", href: "/admin/canon" },
   { label: "Decisions", href: "/admin/decisions" },
   { label: "Assets", href: "/admin/assets" },
+  { label: "Upload Links", href: "/admin/upload-links" },
   { label: "Websites", href: "/admin/websites" },
   { label: "Content", href: "/admin/content" },
   { label: "Contacts", href: "/admin/contacts" },

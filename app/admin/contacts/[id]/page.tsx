@@ -2,15 +2,32 @@ import { requireAdminPage } from "@/lib/auth/boundaries";
 import Link from "next/link";
 import { AdminServiceError } from "../../_components/service-error";
 import { notFound } from "next/navigation";
-import { getContactById } from "@/lib/campaign";
+import { getContactById, getRelationships } from "@/lib/campaign";
+import { getPrisma } from "@/lib/prisma";
 import { updateContactAction } from "../../actions";
+import { EntityConnections } from "../../_components/entity-connections";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditContactPage(props: { params: Promise<{ id: string }> }) {
   await requireAdminPage();
   const params = await props.params;
-  const result = await getContactById(params.id);
+  const prisma = getPrisma();
+
+  const [result, tagRows, relRes] = await Promise.all([
+    getContactById(params.id, true),
+    prisma.entityTag.findMany({
+      where: { entityType: "CONTACT", entityId: params.id },
+      include: { tag: true },
+      orderBy: { tag: { slug: "asc" } },
+    }),
+    getRelationships({
+      entityType: "CONTACT",
+      entityId: params.id,
+      direction: "both",
+      limit: 50,
+    }),
+  ]);
 
   if (!result.ok) {
     if (result.error.code === "NOT_FOUND") {
@@ -21,6 +38,13 @@ export default async function EditContactPage(props: { params: Promise<{ id: str
   }
 
   const contact = result.data;
+  const tags = tagRows.map((r) => ({
+    id: r.tag.id,
+    name: r.tag.name,
+    slug: r.tag.slug,
+    createdAt: r.tag.createdAt.toISOString(),
+  }));
+  const relationships = relRes.ok ? relRes.data.items : [];
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
@@ -161,6 +185,15 @@ export default async function EditContactPage(props: { params: Promise<{ id: str
           </div>
         </form>
       </div>
+
+      {/* Entity Connections */}
+      <EntityConnections
+        entityType="CONTACT"
+        entityId={contact.id}
+        tags={tags}
+        relationships={relationships}
+        currentHref={`/admin/contacts/${contact.id}`}
+      />
     </div>
   );
 }

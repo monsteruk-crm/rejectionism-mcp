@@ -4,7 +4,8 @@ Read [agent rules](../AGENTS.md), [status](STATUS.md), and [project context](PRO
 
 ## Contracts & Architecture
 
-- [MCP tools contract](contracts/mcp-tools.md): Arguments, results, error codes, and annotations for all 10 CampaignOS tools and bootstrap diagnostics.
+- [MCP tools contract](contracts/mcp-tools.md): Arguments, results, error codes, and annotations for all 47 CampaignOS tools and bootstrap diagnostics.
+- [Assets and uploads contract](contracts/assets-and-uploads.md): Hierarchy, file limits, capability token state machine, and private delivery.
 - [Architecture Decision Records (ADRs)](adr/README.md):
   - [ADR 0001: Temporary Unauthenticated Fail-Closed Test Mode](adr/0001-unauthenticated-test-mode.md)
   - [ADR 0002: Shared PostgreSQL Domain Services with Transactional Audit and Concurrency](adr/0002-shared-services-and-transactional-audit.md)
@@ -15,6 +16,8 @@ Read [agent rules](../AGENTS.md), [status](STATUS.md), and [project context](PRO
 ## Runbooks & Operations
 
 - [Local development and verification](runbooks/local-development.md): Setup, Prisma CLI, migration, seeding, unit tests, and smoke testing.
+- [Asset storage and Blob cleanup](runbooks/asset-storage.md): Private Vercel Blob store provisioning, quotas, and abandoned upload cleanup CLI.
+- [Manual acceptance and verification](runbooks/manual-acceptance.md): Step-by-step browser acceptance scenarios, MCP Inspector testing, upload capability flows, and release verification checklist.
 - [Vercel deployment and client integration](runbooks/vercel-deployment.md): Hosting configuration, environment variables, Codex, ChatGPT, and MCP Inspector setup.
 
 ## Project Entry Points
