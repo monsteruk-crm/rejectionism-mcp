@@ -224,7 +224,14 @@ export async function resolveUploadTargetTx(
 export async function createUploadRequest(
   rawInput: unknown,
   source: MutationSource = "admin",
-): Promise<ServiceResult<{ id: string; uploadUrl: string; expiresAt: string }>> {
+): Promise<
+  ServiceResult<{
+    id: string;
+    uploadUrl: string;
+    expiresAt: string;
+    uploadRequest: UploadRequestDto;
+  }>
+> {
   const parsed = CreateUploadRequestInputSchema.safeParse(rawInput);
   if (!parsed.success) {
     return handleServiceError(parsed.error);
@@ -296,6 +303,7 @@ export async function createUploadRequest(
       id: created.id,
       uploadUrl: `${trustedOrigin}/upload/${rawToken}`,
       expiresAt: created.expiresAt.toISOString(),
+      uploadRequest: mapRequestToDto(created),
     });
   } catch (error) {
     return mapUploadRequestError(error);
@@ -500,7 +508,15 @@ export async function revokeUploadRequest(
 export async function regenerateUploadRequest(
   rawInput: unknown,
   source: MutationSource = "admin",
-): Promise<ServiceResult<{ id: string; replacedId: string; uploadUrl: string; expiresAt: string }>> {
+): Promise<
+  ServiceResult<{
+    id: string;
+    replacedId: string;
+    uploadUrl: string;
+    expiresAt: string;
+    uploadRequest: UploadRequestDto;
+  }>
+> {
   const parsed = RegenerateUploadRequestInputSchema.safeParse(rawInput);
   if (!parsed.success) {
     return handleServiceError(parsed.error);
@@ -602,6 +618,7 @@ export async function regenerateUploadRequest(
       replacedId: input.id,
       uploadUrl: `${trustedOrigin}/upload/${rawToken}`,
       expiresAt: result.expiresAt.toISOString(),
+      uploadRequest: mapRequestToDto(result),
     });
   } catch (error) {
     return mapUploadRequestError(error, input.id);

@@ -62,6 +62,7 @@ Visual assets in CampaignOS follow a three-tier append-only model:
    - `POST /api/uploads/verify`: Server-side inspection verifying byte size, MIME type, dimensions, and SVG XML.
    - `POST /api/uploads/finalize`: Atomic finalization transaction locking the request row, verifying all files, CAS updating parent assets, appending revisions/representations, recording audit activity, and persisting a deterministic submission receipt. Streamed body capped at 2 MB.
    - **Replay Safety**: Exactly repeating a successful finalization request with identical payload hash returns the existing receipt without duplicate mutations.
+   - The contributor UI retains one submission key across finalization retries until it receives that receipt, including when a successful commit's response is lost.
 
 ---
 

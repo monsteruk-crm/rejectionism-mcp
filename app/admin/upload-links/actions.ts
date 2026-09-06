@@ -102,16 +102,7 @@ export async function regenerateUploadRequestAction(
   await requireAdminAction();
 
   const id = String(formData.get("id") || "").trim();
-  const expiresInDaysRaw = formData.get("expiresInDays");
-  const expiresInDays = expiresInDaysRaw ? Number(expiresInDaysRaw) : 7;
-
-  const res = await regenerateUploadRequest(
-    {
-      id,
-      expiresInDays,
-    },
-    "admin",
-  );
+  const res = await regenerateUploadRequest({ id }, "admin");
 
   if (!res.ok) {
     return {

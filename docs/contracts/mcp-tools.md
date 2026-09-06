@@ -49,7 +49,7 @@ All tool arguments use strict Zod validation. Unknown fields are rejected.
 25. **`campaign_list_upload_links`**: List upload links by effective status (`OPEN`, `SUBMITTED`, `REVOKED`, `EXPIRED`) or target (`{ status?, targetAssetId?, limit?, offset? }`). Read-only `(true, true, false, true)`.
 26. **`campaign_get_upload_link`**: Retrieve upload link details and reserved/uploaded files (`{ id }`). Read-only `(true, true, false, true)`.
 27. **`campaign_revoke_upload_link`**: Revoke open upload request (`{ id }`). Write `(false, true, true, true)`.
-28. **`campaign_regenerate_upload_link`**: Replace open upload request with fresh token and target snapshot (`{ id, expiresInDays? }`). Write `(false, false, true, true)`.
+28. **`campaign_regenerate_upload_link`**: Replace an open upload request with a fresh token, a seven-day expiry, and a current target snapshot (`{ id }`). Write `(false, false, true, true)`.
 
 ### Websites & Domains (4 Tools)
 29. **`campaign_list_websites`**: List all registered domains, purposes, status, and URLs (`{ limit?, offset? }`). Read-only `(true, true, false, true)`.

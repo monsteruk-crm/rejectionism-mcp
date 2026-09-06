@@ -78,17 +78,8 @@ export function UploadLinkControls(props: {
             </button>
           </form>
 
-          <form action={regenAction} className="flex items-center gap-2">
+          <form action={regenAction}>
             <input type="hidden" name="id" value={props.id} />
-            <input
-              type="number"
-              name="expiresInDays"
-              defaultValue={7}
-              min={1}
-              max={30}
-              className="w-20 border-2 border-ink bg-cream p-1.5 font-mono text-xs text-ink focus:outline-none"
-              title="Expires in days"
-            />
             <button
               type="submit"
               disabled={isRegenPending}

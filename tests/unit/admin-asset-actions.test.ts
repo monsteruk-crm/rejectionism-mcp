@@ -417,15 +417,11 @@ describe("Admin Upload Links Actions", () => {
 
       const fd = new FormData();
       fd.set("id", "req1");
-      fd.set("expiresInDays", "14");
 
       const result = await regenerateUploadRequestAction(null, fd);
 
       expect(result.ok).toBe(true);
-      expect(regenerateUploadRequest).toHaveBeenCalledWith(
-        { id: "req1", expiresInDays: 14 },
-        "admin",
-      );
+      expect(regenerateUploadRequest).toHaveBeenCalledWith({ id: "req1" }, "admin");
       expect(revalidatePath).toHaveBeenCalledWith("/admin/upload-links/req1");
       expect(revalidatePath).toHaveBeenCalledWith("/admin/upload-links/req2");
     });

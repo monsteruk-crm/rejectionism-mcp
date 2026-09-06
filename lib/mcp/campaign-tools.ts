@@ -662,15 +662,11 @@ export function registerCampaignTools(server: McpServer) {
       if (!res.ok) {
         return toMcpToolResult(res as any);
       }
-      const detail = await getUploadRequest({ id: res.data.id });
-      if (!detail.ok) {
-        return toMcpToolResult(detail as any);
-      }
       return toMcpToolResult(
         {
           ok: true,
           data: {
-            uploadRequest: detail.data.request,
+            uploadRequest: res.data.uploadRequest,
             uploadUrl: res.data.uploadUrl,
           },
         } as any,
@@ -785,15 +781,11 @@ export function registerCampaignTools(server: McpServer) {
       if (!res.ok) {
         return toMcpToolResult(res as any);
       }
-      const detail = await getUploadRequest({ id: res.data.id });
-      if (!detail.ok) {
-        return toMcpToolResult(detail as any);
-      }
       return toMcpToolResult(
         {
           ok: true,
           data: {
-            uploadRequest: detail.data.request,
+            uploadRequest: res.data.uploadRequest,
             uploadUrl: res.data.uploadUrl,
             replacedRequestId: res.data.replacedId,
           },

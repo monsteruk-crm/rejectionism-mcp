@@ -28,6 +28,7 @@ export function UploadForm({ uploadToken, request }: UploadFormProps) {
   } | null>(request.submissionReceipt ?? null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const submissionKeyRef = useRef<string | null>(null);
 
   // Add files selected via file dialog or drop
   const handleFilesSelected = (files: FileList | File[]) => {
@@ -214,7 +215,11 @@ export function UploadForm({ uploadToken, request }: UploadFormProps) {
     setIsSubmittingFinalize(true);
     setFinalizeError(null);
 
-    const submissionKey = crypto.randomUUID();
+    // Keep the idempotency key stable until the server returns a receipt. If
+    // the commit succeeds but its response is lost, the next click must send
+    // the exact same key so finalization can replay the stored receipt.
+    const submissionKey = submissionKeyRef.current ?? crypto.randomUUID();
+    submissionKeyRef.current = submissionKey;
     const payloadItems = items.map((item) => {
       if (item.type === "FILE") {
         return {
