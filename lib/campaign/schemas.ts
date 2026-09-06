@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import { TagSlugSchema } from "./tag-schemas";
 
 // Base validators
 export const NonEmptyString = (max: number) =>
@@ -141,10 +142,19 @@ export const EntityTypeSchema = z.enum([
   "WEBSITE",
   "CONTACT",
   "CONTENT_ITEM",
+  "UPLOAD_REQUEST",
+  "TAG",
+  "ENTITY_RELATION",
 ]);
 export type EntityType = z.infer<typeof EntityTypeSchema>;
 
-export const MutationSourceSchema = z.enum(["admin", "mcp", "seed", "system"]);
+export const MutationSourceSchema = z.enum([
+  "admin",
+  "mcp",
+  "seed",
+  "system",
+  "public-upload",
+]);
 export type MutationSource = z.infer<typeof MutationSourceSchema>;
 
 // Pagination
@@ -371,6 +381,8 @@ export const ListAssetsQuerySchema = z
   .object({
     status: AssetStatusSchema.optional(),
     kind: z.string().trim().max(200).optional(),
+    // Assets must carry ALL listed tag slugs; an unknown slug yields zero.
+    tags: z.array(TagSlugSchema).min(1).max(10).optional(),
     limit: z.coerce.number().int().min(1).max(100).default(50),
     offset: z.coerce.number().int().min(0).max(10000).default(0),
   })

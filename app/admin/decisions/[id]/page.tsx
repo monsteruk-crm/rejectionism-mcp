@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth/boundaries";
 import Link from "next/link";
 import { AdminServiceError } from "../../_components/service-error";
 import { notFound } from "next/navigation";
@@ -6,6 +7,7 @@ import { getDecisionById } from "@/lib/campaign";
 export const dynamic = "force-dynamic";
 
 export default async function DecisionDetailPage(props: { params: Promise<{ id: string }> }) {
+  await requireAdminPage();
   const params = await props.params;
   const result = await getDecisionById(params.id);
 

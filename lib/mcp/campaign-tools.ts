@@ -185,7 +185,7 @@ export function registerCampaignTools(server: McpServer) {
     {
       title: "List Assets",
       description:
-        "List and filter registered visual assets by workflow status (MISSING, DRAFT, NEEDS_WORK, APPROVED, SUPERSEDED) or kind.",
+        "List and filter registered visual assets by workflow status, kind, or tag slugs. When tags are supplied, assets must have every slug; an unknown slug returns no matches.",
       inputSchema: ListAssetsQuerySchema,
       outputSchema: z.record(z.string(), z.unknown()),
       annotations: {

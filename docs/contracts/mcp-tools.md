@@ -87,10 +87,11 @@ All tool arguments use strict Zod validation. Unknown fields are rejected.
 
 ## 7. `campaign_list_assets`
 
-- **Description**: List registered visual assets.
+- **Description**: List registered visual assets, optionally filtering by workflow status, kind, or tag slugs. When tags are supplied, an asset must have every requested slug; an unknown slug returns no matches.
 - **Input**:
   - `status` (optional): `"MISSING" | "DRAFT" | "NEEDS_WORK" | "APPROVED" | "SUPERSEDED"`
   - `kind` (optional): string (e.g. `logo`, `banner`, `poster`, `artwork`)
+  - `tags` (optional): array of `1 - 10` normalized tag slugs; all requested slugs must match, and an unknown slug returns an empty result
   - `limit` (optional): `1 - 100` (default 50)
   - `offset` (optional): `0 - 10000` (default 0)
 - **Annotations**: `readOnlyHint: true`, `destructiveHint: false`, `idempotentHint: true`, `openWorldHint: true`
@@ -154,4 +155,6 @@ When any tool operation encounters a domain failure or gate block:
 }
 ```
 
-Error Codes: `VALIDATION_ERROR`, `NOT_FOUND`, `VERSION_CONFLICT`, `TEST_MODE_DISABLED`, `ALREADY_EXISTS`, `DATABASE_UNAVAILABLE`, `INTERNAL_ERROR`.
+Error Codes: `VALIDATION_ERROR`, `NOT_FOUND`, `VERSION_CONFLICT`, `ALREADY_EXISTS`, `DATABASE_UNAVAILABLE`, `INTERNAL_ERROR`.
+
+Transport authentication (ADR 0003): requests to `/api/mcp` and `/mcp` must carry `Authorization: Bearer <CAMPAIGNOS_PASSWORD>`; failures return HTTP 401 with a JSON body whose error code is `AUTH_REQUIRED`.

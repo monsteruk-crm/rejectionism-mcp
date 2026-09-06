@@ -1,7 +1,6 @@
 import "server-only";
 import { getPrisma } from "@/lib/prisma";
-import { isTestModeEnabled } from "./test-mode";
-import { ok, fail, testModeDisabledResult, handleServiceError, ServiceResult } from "./results";
+import { ok, fail, handleServiceError, ServiceResult } from "./results";
 import { RecordDecisionInputSchema, ListDecisionsQuerySchema, MutationSource } from "./schemas";
 import { createActivityTx } from "./activity";
 import { mapCanonToDto, CanonEntryDto } from "./canon";
@@ -48,10 +47,6 @@ export async function recordDecision(
   rawInput: unknown,
   source: MutationSource = "admin",
 ): Promise<ServiceResult<DecisionDto>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   const parsed = RecordDecisionInputSchema.safeParse(rawInput);
   if (!parsed.success) {
     return handleServiceError(parsed.error);
@@ -242,10 +237,6 @@ export async function recordDecision(
 }
 
 export async function getDecisionById(id: string): Promise<ServiceResult<DecisionDto>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   try {
     const prisma = getPrisma();
     const item = await prisma.decision.findUnique({
@@ -266,10 +257,6 @@ export async function getDecisionById(id: string): Promise<ServiceResult<Decisio
 export async function listDecisions(
   rawQuery: unknown = {},
 ): Promise<ServiceResult<{ items: DecisionDto[]; total: number; limit: number; offset: number }>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   const parsed = ListDecisionsQuerySchema.safeParse(rawQuery);
   if (!parsed.success) {
     return handleServiceError(parsed.error);

@@ -42,3 +42,5 @@ next-env.d.ts
 /.idea/
 
 /app/generated/prisma
+
+/temp

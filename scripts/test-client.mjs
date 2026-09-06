@@ -11,6 +11,14 @@ const endpointPath = pathArg ? pathArg.split("=")[1] : "/api/mcp";
 const allowWrites = args.includes("--test-writes");
 const disposableDatabase = args.includes("--disposable-database");
 
+// The credential is read from the environment only. It is never accepted as a
+// command-line value, and request headers are never printed.
+const campaignPassword = process.env.CAMPAIGNOS_PASSWORD;
+if (typeof campaignPassword !== "string" || campaignPassword.length === 0) {
+  console.error("CAMPAIGNOS_PASSWORD must be set in the environment for the smoke client.");
+  process.exit(1);
+}
+
 const textContentSchema = z
   .array(z.object({ type: z.literal("text"), text: z.string().min(1) }).passthrough())
   .min(1);
@@ -69,7 +77,13 @@ async function main() {
   });
 
   const endpoint = new URL(endpointPath, `${origin}/`);
-  const transport = new StreamableHTTPClientTransport(endpoint);
+  const transport = new StreamableHTTPClientTransport(endpoint, {
+    requestInit: {
+      headers: {
+        Authorization: `Bearer ${campaignPassword}`,
+      },
+    },
+  });
 
   try {
     console.log(`\n1. Connecting to ${endpoint.toString()}...`);

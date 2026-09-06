@@ -1,7 +1,6 @@
 import "server-only";
 import { getPrisma } from "@/lib/prisma";
-import { isTestModeEnabled } from "./test-mode";
-import { ok, fail, testModeDisabledResult, handleServiceError, ServiceResult } from "./results";
+import { ok, fail, handleServiceError, ServiceResult } from "./results";
 import {
   CreateWorkItemInputSchema,
   UpdateWorkItemInputSchema,
@@ -91,10 +90,6 @@ export async function createWorkItem(
   rawInput: unknown,
   source: MutationSource = "admin",
 ): Promise<ServiceResult<WorkItemDto>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   const parsed = CreateWorkItemInputSchema.safeParse(rawInput);
   if (!parsed.success) {
     return handleServiceError(parsed.error);
@@ -156,10 +151,6 @@ export async function updateWorkItem(
   rawInput: unknown,
   source: MutationSource = "admin",
 ): Promise<ServiceResult<WorkItemDto>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   const parsed = UpdateWorkItemInputSchema.safeParse(rawInput);
   if (!parsed.success) {
     return handleServiceError(parsed.error);
@@ -287,10 +278,6 @@ export async function updateWorkItem(
 }
 
 export async function getWorkItemById(id: string): Promise<ServiceResult<WorkItemDto>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   try {
     const prisma = getPrisma();
     const item = await prisma.workItem.findUnique({
@@ -310,10 +297,6 @@ export async function getWorkItemById(id: string): Promise<ServiceResult<WorkIte
 export async function listWorkItems(
   rawQuery: unknown = {},
 ): Promise<ServiceResult<{ items: WorkItemDto[]; total: number; limit: number; offset: number }>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   const parsed = ListWorkItemsQuerySchema.safeParse(rawQuery);
   if (!parsed.success) {
     return handleServiceError(parsed.error);

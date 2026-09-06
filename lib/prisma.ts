@@ -6,10 +6,10 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 export function getPrisma(): PrismaClient {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = process.env.MCP_PRISMA_DATABASE_URL;
 
   if (!connectionString) {
-    throw new Error("DATABASE_URL is not configured.");
+    throw new Error("MCP_PRISMA_DATABASE_URL is not configured.");
   }
 
   if (!globalForPrisma.prisma) {

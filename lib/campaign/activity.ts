@@ -1,7 +1,6 @@
 import "server-only";
 import { getPrisma } from "@/lib/prisma";
-import { isTestModeEnabled } from "./test-mode";
-import { ok, fail, testModeDisabledResult, handleServiceError, ServiceResult } from "./results";
+import { ok, fail, handleServiceError, ServiceResult } from "./results";
 import { ListActivityQuerySchema, EntityType, MutationSource } from "./schemas";
 import { Prisma } from "@/app/generated/prisma/client";
 
@@ -34,10 +33,6 @@ export async function createActivityTx(tx: Prisma.TransactionClient, params: Cre
 export async function listActivity(
   rawQuery: unknown = {},
 ): Promise<ServiceResult<{ items: unknown[]; total: number; limit: number }>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   const parsed = ListActivityQuerySchema.safeParse(rawQuery);
   if (!parsed.success) {
     return handleServiceError(parsed.error);

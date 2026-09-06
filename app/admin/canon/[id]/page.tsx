@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth/boundaries";
 import Link from "next/link";
 import { AdminServiceError } from "../../_components/service-error";
 import { notFound } from "next/navigation";
@@ -7,6 +8,7 @@ import { updateCanonEntryAction } from "../../actions";
 export const dynamic = "force-dynamic";
 
 export default async function EditCanonEntryPage(props: { params: Promise<{ id: string }> }) {
+  await requireAdminPage();
   const params = await props.params;
   const result = await getCanonEntryById(params.id);
 

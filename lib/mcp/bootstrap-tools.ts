@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import { getPrisma } from "@/lib/prisma";
+import { pingDatabase } from "@/lib/campaign/health";
 
 export function registerBootstrapTools(server: McpServer) {
   server.registerTool(
@@ -52,48 +52,33 @@ export function registerBootstrapTools(server: McpServer) {
       },
     },
     async () => {
-      const startedAt = performance.now();
+      const result = await pingDatabase();
 
-      try {
-        const rows = await getPrisma().$queryRaw<Array<{ result: number }>>`
-          SELECT 1 AS result
-        `;
-
-        if (rows[0]?.result !== 1) {
-          throw new Error("Unexpected database response.");
-        }
-
-        const structuredContent = {
-          status: "ok" as const,
-          result: 1 as const,
-          latencyMs: Math.round(performance.now() - startedAt),
-        };
-
+      if (!result.ok) {
         return {
           content: [
             {
               type: "text" as const,
-              text: `Prisma database check succeeded in ${structuredContent.latencyMs}ms.`,
-            },
-          ],
-          structuredContent,
-        };
-      } catch (error) {
-        const message =
-          error instanceof Error && error.message === "DATABASE_URL is not configured."
-            ? error.message
-            : "The PostgreSQL query failed. Check DATABASE_URL and the database status.";
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Prisma database check failed: ${message}`,
+              text: "Prisma database check failed. The PostgreSQL query did not succeed; check MCP_PRISMA_DATABASE_URL and the database status.",
             },
           ],
           isError: true,
         };
       }
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Prisma database check succeeded in ${result.latencyMs}ms.`,
+          },
+        ],
+        structuredContent: {
+          status: "ok" as const,
+          result: 1 as const,
+          latencyMs: result.latencyMs,
+        },
+      };
     },
   );
 }

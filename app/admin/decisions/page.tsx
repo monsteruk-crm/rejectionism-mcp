@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth/boundaries";
 import Link from "next/link";
 import { AdminServiceError } from "../_components/service-error";
 import { listDecisions } from "@/lib/campaign";
@@ -6,6 +7,7 @@ import { recordDecisionAction } from "../actions";
 export const dynamic = "force-dynamic";
 
 export default async function DecisionsListPage() {
+  await requireAdminPage();
   const result = await listDecisions({ limit: 100 });
   const decisions = result.ok ? result.data.items : [];
 

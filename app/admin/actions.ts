@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireAdminAction } from "@/lib/auth/boundaries";
 import {
   createWorkItem,
   updateWorkItem,
@@ -31,6 +32,7 @@ function formDataToObject(formData: FormData): Record<string, unknown> {
 // Work Items
 // -------------------------------------------------------------
 export async function createWorkItemAction(formData: FormData): Promise<void> {
+  await requireAdminAction();
   const raw = formDataToObject(formData);
   const res = await createWorkItem(raw, "admin");
 
@@ -43,6 +45,7 @@ export async function createWorkItemAction(formData: FormData): Promise<void> {
 }
 
 export async function updateWorkItemAction(formData: FormData): Promise<void> {
+  await requireAdminAction();
   const id = formData.get("id") as string;
   const expectedVersion = Number(formData.get("expectedVersion"));
 
@@ -87,6 +90,7 @@ export async function updateWorkItemAction(formData: FormData): Promise<void> {
 // Canon
 // -------------------------------------------------------------
 export async function createCanonEntryAction(formData: FormData): Promise<void> {
+  await requireAdminAction();
   const raw = formDataToObject(formData);
   const res = await createCanonEntry(raw, "admin");
 
@@ -99,6 +103,7 @@ export async function createCanonEntryAction(formData: FormData): Promise<void> 
 }
 
 export async function updateCanonEntryAction(formData: FormData): Promise<void> {
+  await requireAdminAction();
   const id = formData.get("id") as string;
   const expectedVersion = Number(formData.get("expectedVersion"));
 
@@ -132,6 +137,7 @@ export async function updateCanonEntryAction(formData: FormData): Promise<void> 
 // Decisions
 // -------------------------------------------------------------
 export async function recordDecisionAction(formData: FormData): Promise<void> {
+  await requireAdminAction();
   const subject = formData.get("subject") as string;
   const decision = formData.get("decision") as string;
   const rationale = formData.get("rationale") as string;
@@ -179,6 +185,7 @@ export async function recordDecisionAction(formData: FormData): Promise<void> {
 // Assets
 // -------------------------------------------------------------
 export async function createAssetAction(formData: FormData): Promise<void> {
+  await requireAdminAction();
   const raw = formDataToObject(formData);
   const res = await createAsset(raw, "admin");
 
@@ -191,6 +198,7 @@ export async function createAssetAction(formData: FormData): Promise<void> {
 }
 
 export async function updateAssetAction(formData: FormData): Promise<void> {
+  await requireAdminAction();
   const id = formData.get("id") as string;
   const expectedVersion = Number(formData.get("expectedVersion"));
 
@@ -226,6 +234,7 @@ export async function updateAssetAction(formData: FormData): Promise<void> {
 // Websites
 // -------------------------------------------------------------
 export async function updateWebsiteAction(formData: FormData): Promise<void> {
+  await requireAdminAction();
   const id = formData.get("id") as string;
   const expectedVersion = Number(formData.get("expectedVersion"));
 
@@ -261,6 +270,7 @@ export async function updateWebsiteAction(formData: FormData): Promise<void> {
 // Contacts
 // -------------------------------------------------------------
 export async function createContactAction(formData: FormData): Promise<void> {
+  await requireAdminAction();
   const raw = formDataToObject(formData);
   const res = await createContact(raw, "admin");
 
@@ -273,6 +283,7 @@ export async function createContactAction(formData: FormData): Promise<void> {
 }
 
 export async function updateContactAction(formData: FormData): Promise<void> {
+  await requireAdminAction();
   const id = formData.get("id") as string;
   const expectedVersion = Number(formData.get("expectedVersion"));
 
@@ -308,6 +319,7 @@ export async function updateContactAction(formData: FormData): Promise<void> {
 // Content Items
 // -------------------------------------------------------------
 export async function createContentItemAction(formData: FormData): Promise<void> {
+  await requireAdminAction();
   const raw = formDataToObject(formData);
   const res = await createContentItem(raw, "admin");
 
@@ -320,6 +332,7 @@ export async function createContentItemAction(formData: FormData): Promise<void>
 }
 
 export async function updateContentItemAction(formData: FormData): Promise<void> {
+  await requireAdminAction();
   const id = formData.get("id") as string;
   const expectedVersion = Number(formData.get("expectedVersion"));
 
