@@ -59,6 +59,34 @@ enum EntityType {
   WEBSITE
   CONTACT
   CONTENT_ITEM
+  UPLOAD_REQUEST
+  TAG
+  ENTITY_RELATION
+}
+
+enum AssetStorageType {
+  BLOB
+  EXTERNAL_URL
+}
+
+enum UploadRequestStatus {
+  OPEN
+  SUBMITTED
+  REVOKED
+}
+
+enum UploadFileStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  ATTACHED
+  DISCARDED
+}
+
+enum EntityRelationType {
+  RELATES_TO
+  USES_ASSET
+  PART_OF
 }
 
 model WorkItem {
@@ -120,6 +148,10 @@ model Asset {
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
+  revisions            AssetRevision[]
+  uploadRequests       UploadRequest[]      @relation("UploadTargetAsset")
+  legacyRepresentation AssetRepresentation? @relation("LegacyAssetRepresentation")
+
   @@index([status])
   @@index([kind])
 }
@@ -179,4 +211,148 @@ model Activity {
 
   @@index([createdAt])
   @@index([entityType, entityId, createdAt])
+}
+
+model AssetRevision {
+  id             String   @id @default(cuid())
+  assetId        String
+  revisionNumber Int
+  label          String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  asset          Asset    @relation(fields: [assetId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  representations AssetRepresentation[]
+  uploadRequests  UploadRequest[]
+
+  @@unique([assetId, revisionNumber])
+}
+
+model AssetRepresentation {
+  id              String           @id @default(cuid())
+  assetRevisionId String
+  storageType     AssetStorageType
+  label           String?
+  notes           String?
+  variant         String?
+  format          String?
+  sourceFilename  String?
+  mimeType        String?
+  byteSize        BigInt?
+  width           Int?
+  height          Int?
+  checksumSha256  String?          @db.Char(64)
+  blobUrl         String?
+  blobPathname    String?          @unique
+  externalUrl     String?
+  isPrimary       Boolean          @default(false)
+  uploadFileId    String?          @unique
+  uploadRequestId String?
+  legacyAssetId   String?          @unique
+  createdAt       DateTime         @default(now())
+  assetRevision   AssetRevision    @relation(fields: [assetRevisionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  uploadFile      UploadFile?      @relation(fields: [uploadFileId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  uploadRequest   UploadRequest?   @relation(fields: [uploadRequestId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  legacyAsset     Asset?           @relation("LegacyAssetRepresentation", fields: [legacyAssetId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([assetRevisionId, createdAt])
+  @@index([storageType])
+  @@index([uploadRequestId])
+}
+
+model UploadRequest {
+  id                     String              @id @default(cuid())
+  tokenHash              String              @unique @db.Char(64)
+  title                  String
+  instructions           String              @default("")
+  status                 UploadRequestStatus @default(OPEN)
+  expiresAt              DateTime
+  maxItems               Int                 @default(20)
+  targetAssetId          String?
+  targetRevisionId       String?
+  targetAssetVersion     Int?
+  submissionKey          String?             @db.Uuid
+  submissionHash         String?             @db.Char(64)
+  submissionReceipt      Json?
+  createdAt              DateTime            @default(now())
+  submittedAt            DateTime?
+  revokedAt              DateTime?
+  replacesId             String?             @unique
+  targetAsset            Asset?              @relation("UploadTargetAsset", fields: [targetAssetId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  targetRevision         AssetRevision?      @relation(fields: [targetRevisionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  replaces               UploadRequest?      @relation("UploadReplacement", fields: [replacesId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  replacedBy             UploadRequest?      @relation("UploadReplacement")
+  files                  UploadFile[]
+  representations        AssetRepresentation[]
+
+  @@index([status, expiresAt])
+  @@index([createdAt, id])
+  @@index([targetAssetId])
+  @@index([targetRevisionId])
+}
+
+model UploadFile {
+  id                     String           @id @default(cuid())
+  uploadRequestId        String
+  clientItemId           String           @db.Uuid
+  status                 UploadFileStatus @default(PENDING)
+  sourceFilename         String
+  declaredMimeType       String
+  expectedByteSize       BigInt
+  blobPathname           String           @unique
+  blobUrl                String?
+  mimeType               String?
+  byteSize               BigInt?
+  width                  Int?
+  height                 Int?
+  verifiedAt             DateTime?
+  failureCode            String?
+  authorizationCount     Int              @default(0)
+  authorizationExpiresAt DateTime?
+  deletedAt              DateTime?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  uploadRequest          UploadRequest    @relation(fields: [uploadRequestId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  representation         AssetRepresentation?
+
+  @@unique([uploadRequestId, clientItemId])
+  @@index([uploadRequestId, status])
+}
+
+// Generic tags and directed relationships (upgrade plan Phase 4). The
+// polymorphic endpoints carry no database foreign keys; integrity is enforced
+// by authored SQL constraints (original seven entity types, no self-relation)
+// plus explicit service-side entity existence checks (ADR 0005).
+model Tag {
+  id        String      @id @default(cuid())
+  name      String
+  slug      String      @unique
+  createdAt DateTime    @default(now())
+  entities  EntityTag[]
+}
+
+model EntityTag {
+  tagId      String
+  entityType EntityType
+  entityId   String
+  createdAt  DateTime    @default(now())
+  tag        Tag         @relation(fields: [tagId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@id([tagId, entityType, entityId])
+  @@index([entityType, entityId])
+}
+
+model EntityRelation {
+  id             String             @id @default(cuid())
+  fromEntityType EntityType
+  fromEntityId   String
+  toEntityType   EntityType
+  toEntityId     String
+  relationType   EntityRelationType
+  notes          String?
+  createdAt      DateTime           @default(now())
+
+  @@unique([fromEntityType, fromEntityId, toEntityType, toEntityId, relationType])
+  @@index([fromEntityType, fromEntityId, createdAt])
+  @@index([toEntityType, toEntityId, createdAt])
 }

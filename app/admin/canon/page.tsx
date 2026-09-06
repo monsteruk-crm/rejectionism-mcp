@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth/boundaries";
 import Link from "next/link";
 import { AdminServiceError } from "../_components/service-error";
 import { getCanon } from "@/lib/campaign";
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function CanonListPage(props: {
   searchParams: Promise<{ category?: string }>;
 }) {
+  await requireAdminPage();
   const searchParams = await props.searchParams;
   const categoryFilter = searchParams.category;
 

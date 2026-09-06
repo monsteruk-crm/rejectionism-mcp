@@ -1,7 +1,6 @@
 import "server-only";
 import { getPrisma } from "@/lib/prisma";
-import { isTestModeEnabled } from "./test-mode";
-import { ok, fail, testModeDisabledResult, handleServiceError, ServiceResult } from "./results";
+import { ok, fail, handleServiceError, ServiceResult } from "./results";
 import {
   CreateContentItemInputSchema,
   UpdateContentItemInputSchema,
@@ -78,10 +77,6 @@ export async function createContentItem(
   rawInput: unknown,
   source: MutationSource = "admin",
 ): Promise<ServiceResult<ContentItemDto>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   const parsed = CreateContentItemInputSchema.safeParse(rawInput);
   if (!parsed.success) {
     return handleServiceError(parsed.error);
@@ -134,10 +129,6 @@ export async function updateContentItem(
   rawInput: unknown,
   source: MutationSource = "admin",
 ): Promise<ServiceResult<ContentItemDto>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   const parsed = UpdateContentItemInputSchema.safeParse(rawInput);
   if (!parsed.success) {
     return handleServiceError(parsed.error);
@@ -246,10 +237,6 @@ export async function updateContentItem(
 }
 
 export async function getContentItemById(id: string): Promise<ServiceResult<ContentItemDto>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   try {
     const prisma = getPrisma();
     const item = await prisma.contentItem.findUnique({
@@ -271,10 +258,6 @@ export async function listContentItems(
 ): Promise<
   ServiceResult<{ items: ContentItemDto[]; total: number; limit: number; offset: number }>
 > {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   const parsed = ListContentItemsQuerySchema.safeParse(rawQuery);
   if (!parsed.success) {
     return handleServiceError(parsed.error);

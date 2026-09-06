@@ -18,9 +18,6 @@ export default function Home() {
       >
         Enter the HQ
       </Link>
-      <p className="max-w-md text-xs uppercase tracking-wider text-ink/60">
-        Unauthenticated test system — do not store private or sensitive data.
-      </p>
     </main>
   );
 }

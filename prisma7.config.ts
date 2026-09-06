@@ -7,9 +7,11 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
-    seed: "tsx prisma/seed.ts",
+    // The react-server condition maps the server-only guard package to its
+    // empty entry outside Next.js, matching how Next executes server code.
+    seed: "tsx --conditions=react-server prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    url: process.env["MCP_PRISMA_DATABASE_URL"],
   },
 });

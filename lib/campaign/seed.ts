@@ -1,7 +1,6 @@
 import "server-only";
 import { getPrisma } from "@/lib/prisma";
-import { isTestModeEnabled } from "./test-mode";
-import { ok, testModeDisabledResult, handleServiceError, ServiceResult } from "./results";
+import { ok, handleServiceError, ServiceResult } from "./results";
 import {
   SEED_CANON_ENTRIES,
   SEED_WEBSITES,
@@ -9,6 +8,7 @@ import {
   SEED_ASSETS,
 } from "../../prisma/seed-data";
 import { createActivityTx } from "./activity";
+import { isExternalHttpUrl } from "./external-url";
 import { Prisma } from "@/app/generated/prisma/client";
 
 export interface SeedResultSummary {
@@ -19,9 +19,6 @@ export interface SeedResultSummary {
 }
 
 export async function seedCampaignData(): Promise<ServiceResult<SeedResultSummary>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
 
   const summary: SeedResultSummary = {
     canon: { created: 0, updated: 0, unchanged: 0 },
@@ -224,84 +221,87 @@ export async function seedCampaignData(): Promise<ServiceResult<SeedResultSummar
           }
         }
 
-        // 4. Seed Assets (Sections 4A, 4B, 4C)
+        // 4. Seed Assets. Existing seed Assets are left completely unchanged
+        // (metadata, version, revisions, and representations): rerunning the
+        // seed must never overwrite human-edited artwork metadata.
         for (const item of SEED_ASSETS) {
           const existing = await tx.asset.findUnique({
             where: { id: item.id },
           });
 
-          if (!existing) {
-            const created = await tx.asset.create({
-              data: {
-                id: item.id,
-                name: item.name,
-                kind: item.kind,
-                status: item.status,
-                sourceFilename: item.sourceFilename,
-                url: item.url,
-                notes: item.notes,
-                version: 1,
-              },
-            });
-
-            await createActivityTx(tx, {
-              entityType: "ASSET",
-              entityId: created.id,
-              action: "CREATED",
-              summary: `Seeded asset: ${created.name}`,
-              source: "seed",
-              metadata: {
-                name: created.name,
-                kind: created.kind,
-                status: created.status,
-              },
-            });
-
-            summary.assets.created++;
-          } else {
-            // Check if seed-owned metadata changed; preserve user-updated status/url
-            const hasChange =
-              existing.name !== item.name ||
-              existing.kind !== item.kind ||
-              existing.sourceFilename !== item.sourceFilename ||
-              existing.notes !== item.notes;
-
-            if (hasChange) {
-              await tx.asset.update({
-                where: { id: existing.id },
-                data: {
-                  name: item.name,
-                  kind: item.kind,
-                  sourceFilename: item.sourceFilename,
-                  notes: item.notes,
-                  version: existing.version + 1,
-                },
-              });
-
-              await createActivityTx(tx, {
-                entityType: "ASSET",
-                entityId: existing.id,
-                action: "UPDATED",
-                summary: `Refreshed seed asset metadata: ${item.name}`,
-                source: "seed",
-                metadata: { id: existing.id, oldVersion: existing.version },
-              });
-
-              summary.assets.updated++;
-            } else {
-              summary.assets.unchanged++;
-            }
+          if (existing) {
+            summary.assets.unchanged++;
+            continue;
           }
+
+          const created = await tx.asset.create({
+            data: {
+              id: item.id,
+              name: item.name,
+              kind: item.kind,
+              status: item.status,
+              sourceFilename: item.sourceFilename,
+              url: item.url,
+              notes: item.notes,
+              version: 1,
+            },
+          });
+
+          // New seed Assets get revision 1 and, when a valid seed URL exists,
+          // a primary EXTERNAL_URL representation carrying the legacyAssetId
+          // marker so a later backfill cannot duplicate the reference.
+          const revision = await tx.assetRevision.create({
+            data: {
+              assetId: created.id,
+              revisionNumber: 1,
+            },
+            select: { id: true },
+          });
+
+          if (typeof item.url === "string" && item.url.length > 0 && isExternalHttpUrl(item.url)) {
+            await tx.assetRepresentation.create({
+              data: {
+                assetRevisionId: revision.id,
+                storageType: "EXTERNAL_URL",
+                sourceFilename: item.sourceFilename,
+                externalUrl: item.url,
+                legacyAssetId: created.id,
+                isPrimary: true,
+              },
+            });
+          }
+
+          await createActivityTx(tx, {
+            entityType: "ASSET",
+            entityId: created.id,
+            action: "CREATED",
+            summary: `Seeded asset: ${created.name}`,
+            source: "seed",
+            metadata: {
+              name: created.name,
+              kind: created.kind,
+              status: created.status,
+            },
+          });
+
+          summary.assets.created++;
         }
       },
       {
-        maxWait: 5000,
-        timeout: 20000,
+        // The seed performs ~200 sequential queries in one atomic transaction;
+        // remote/serverless PostgreSQL latency (e.g. Prisma Postgres) exceeds
+        // the default 20s interactive-transaction budget, so allow up to 2
+        // minutes. Applies to the authorized CLI seed only.
+        maxWait: 10000,
+        timeout: 120000,
       },
     );
 
     return ok(summary);
   } catch (error) {
+    // The seed runs as an authorized CLI script; surface the raw error so the
+    // operator sees the real failure instead of a generic INTERNAL_ERROR.
+    console.error("Seed transaction failed with raw error:", error);
     return handleServiceError(error);
   }
 }

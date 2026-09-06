@@ -1,7 +1,6 @@
 import "server-only";
 import { getPrisma } from "@/lib/prisma";
-import { isTestModeEnabled } from "./test-mode";
-import { ok, fail, testModeDisabledResult, handleServiceError, ServiceResult } from "./results";
+import { ok, fail, handleServiceError, ServiceResult } from "./results";
 import {
   CreateCanonEntryInputSchema,
   UpdateCanonEntryInputSchema,
@@ -48,10 +47,6 @@ export async function createCanonEntry(
   rawInput: unknown,
   source: MutationSource = "admin",
 ): Promise<ServiceResult<CanonEntryDto>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   const parsed = CreateCanonEntryInputSchema.safeParse(rawInput);
   if (!parsed.success) {
     return handleServiceError(parsed.error);
@@ -111,10 +106,6 @@ export async function updateCanonEntry(
   rawInput: unknown,
   source: MutationSource = "admin",
 ): Promise<ServiceResult<CanonEntryDto>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   const parsed = UpdateCanonEntryInputSchema.safeParse(rawInput);
   if (!parsed.success) {
     return handleServiceError(parsed.error);
@@ -195,10 +186,6 @@ export async function updateCanonEntry(
 }
 
 export async function getCanonEntryById(id: string): Promise<ServiceResult<CanonEntryDto>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   try {
     const prisma = getPrisma();
     const item = await prisma.canonEntry.findUnique({
@@ -223,10 +210,6 @@ export async function getCanon(
     | { mode: "collection"; items: CanonEntryDto[]; total: number; limit: number; offset: number }
   >
 > {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   const parsed = GetCanonQuerySchema.safeParse(rawQuery);
   if (!parsed.success) {
     return handleServiceError(parsed.error);

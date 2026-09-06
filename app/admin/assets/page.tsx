@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth/boundaries";
 import Link from "next/link";
 import { AdminServiceError } from "../_components/service-error";
 import { listAssets } from "@/lib/campaign";
@@ -9,6 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function AssetsListPage(props: {
   searchParams: Promise<{ status?: string; kind?: string }>;
 }) {
+  await requireAdminPage();
   const searchParams = await props.searchParams;
   const statusFilter = searchParams.status;
   const kindFilter = searchParams.kind;

@@ -1,7 +1,6 @@
 import "server-only";
 import { getPrisma } from "@/lib/prisma";
-import { isTestModeEnabled } from "./test-mode";
-import { ok, testModeDisabledResult, handleServiceError, ServiceResult } from "./results";
+import { ok, handleServiceError, ServiceResult } from "./results";
 import { WorkItemDto, mapToDto as mapWorkItemToDto } from "./work-items";
 import { AssetDto, mapAssetToDto } from "./assets";
 import { WebsiteDto, mapWebsiteToDto } from "./websites";
@@ -39,10 +38,6 @@ export interface CampaignStatusDto {
 }
 
 export async function getCampaignStatus(): Promise<ServiceResult<CampaignStatusDto>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   try {
     const prisma = getPrisma();
 

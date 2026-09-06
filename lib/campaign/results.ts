@@ -5,10 +5,18 @@ export type ServiceErrorCode =
   | "VALIDATION_ERROR"
   | "NOT_FOUND"
   | "VERSION_CONFLICT"
-  | "TEST_MODE_DISABLED"
   | "ALREADY_EXISTS"
   | "DATABASE_UNAVAILABLE"
-  | "INTERNAL_ERROR";
+  | "INTERNAL_ERROR"
+  | "UPLOAD_EXPIRED"
+  | "UPLOAD_REVOKED"
+  | "UPLOAD_ALREADY_SUBMITTED"
+  | "UPLOAD_NOT_READY"
+  | "UPLOAD_LIMIT_EXCEEDED"
+  | "UPLOAD_FILE_REJECTED"
+  | "STORAGE_UNAVAILABLE"
+  | "AUTH_NOT_CONFIGURED"
+  | "CONFIGURATION_ERROR";
 
 export interface ServiceError {
   code: ServiceErrorCode;
@@ -34,13 +42,6 @@ export function fail(
   return { ok: false, error: err };
 }
 
-export function testModeDisabledResult(): ServiceResult<never> {
-  return fail(
-    "TEST_MODE_DISABLED",
-    "Unauthenticated test mode is disabled. All campaign operations are blocked.",
-  );
-}
-
 export function handleZodError(error: z.ZodError): ServiceResult<never> {
   const fieldErrors: Record<string, string[]> = {};
   for (const issue of error.issues) {
@@ -61,7 +62,7 @@ export function handleServiceError(error: unknown): ServiceResult<never> {
   const message = error instanceof Error ? error.message : String(error);
 
   if (
-    message.includes("DATABASE_URL") ||
+    message.includes("MCP_PRISMA_DATABASE_URL") ||
     message.includes("connect") ||
     message.includes("Can't reach database")
   ) {

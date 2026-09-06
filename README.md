@@ -2,9 +2,7 @@
 
 The operational headquarters for **REJECTIONISM**, the satirical art movement built around rejection.
 
-> **SECURITY WARNING**: `UNAUTHENTICATED_TEST_MODE=true`  
-> **UNAUTHENTICATED TEST SYSTEM — DO NOT STORE PRIVATE OR SENSITIVE DATA**  
-> This test version intentionally has no authentication. Never store passwords, tokens, bank details, or sensitive personal data. Proper authentication and authorization is the first post-MVP milestone.
+> **SECURITY**: `/admin` and the MCP endpoints require authentication with a single shared credential (see [ADR 0003](docs/adr/0003-single-password-boundary-authentication.md)). Configure `CAMPAIGNOS_PASSWORD` (32–256 chars) for admin login and MCP Bearer access; missing or invalid configuration fails closed.
 
 ---
 
@@ -37,13 +35,19 @@ Configure the following variables in `.env` (or Vercel settings):
 
 ```env
 # PostgreSQL connection string for Prisma pg adapter
-DATABASE_URL=postgresql://user:password@localhost:5432/campaignos
+# (named MCP_PRISMA_DATABASE_URL because Vercel reserves DATABASE_URL)
+MCP_PRISMA_DATABASE_URL=postgresql://user:password@localhost:5432/campaignos
 
-# Temporary unauthenticated test mode (must be exactly "true" to enable operations)
-UNAUTHENTICATED_TEST_MODE=true
+# Shared credential: admin login password and MCP Bearer token
+# 32-256 characters, allowed: letters, digits, `-`, `_`
+CAMPAIGNOS_PASSWORD=generate-a-long-random-credential
+
+# Application origin used as the trusted origin for auth checks
+# (optional in development, defaults to http://localhost:3000; HTTPS required in production)
+CAMPAIGNOS_BASE_URL=http://localhost:3000
 ```
 
-When `UNAUTHENTICATED_TEST_MODE` is not `"true"`, the application fails closed: `/admin` shows a disabled notice and all MCP tool writes return a `TEST_MODE_DISABLED` error.
+Authentication fails closed: without a valid `CAMPAIGNOS_PASSWORD`, `/admin` redirects to `/login` with a configuration notice and all MCP requests receive HTTP 401 `AUTH_REQUIRED`.
 
 ---
 
@@ -78,11 +82,16 @@ Visit:
 
 ### OpenAI Codex / Claude Desktop / Cursor (`claude_desktop_config.json`):
 
+MCP requests require `Authorization: Bearer <CAMPAIGNOS_PASSWORD>`.
+
 ```json
 {
   "mcpServers": {
     "rejectionism-campaign-os": {
-      "url": "http://localhost:3000/api/mcp"
+      "url": "http://localhost:3000/api/mcp",
+      "headers": {
+        "Authorization": "Bearer <CAMPAIGNOS_PASSWORD>"
+      }
     }
   }
 }
@@ -102,6 +111,6 @@ pnpm test:client -- http://localhost:3000
 
 ---
 
-## Next Mandatory Milestone
+## Roadmap
 
-The first post-MVP milestone is implementing proper authentication and authorization (e.g. OAuth 2.0 / CIMD / session auth) to replace the temporary unauthenticated test mode.
+Authentication is implemented (single shared credential with stateless signed sessions, [ADR 0003](docs/adr/0003-single-password-boundary-authentication.md)). Per-user identity providers (OAuth 2.0 / CIMD) remain future work. Upcoming milestones add asset storage, Blob-backed uploads with upload links, MCP/Admin management parity, and global search.

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted (amended 2026-09-06: scoped set-operation concurrency exception, see ADR 0005)
 
 ## Context
 
@@ -25,6 +25,10 @@ CampaignOS operations must be driven identically by two client interfaces: the `
 
 - Positive: Guaranteed parity between Web Admin and MCP operations, audit log consistency, and race-free concurrent updates.
 - Negative: All updates must provide `expectedVersion`, requiring clients and forms to hold current version state.
+
+## Amendment (2026-09-06): Set-Operation Concurrency Exception
+
+Generic tag membership (`EntityTag`) and directed relationships (`EntityRelation`) are independent set operations, not versioned entity mutations. They do not require `expectedVersion` and do not increment an entity `version`; they serialize through unique constraints plus idempotent add/remove, write no Activity on no-op repeats, and retry unique-conflict races outside the failed transaction. This scoped exception is specified in ADR 0005 and applies only to these two tables — every other mutation keeps expected-version concurrency.
 
 ## Implementation References
 

@@ -154,4 +154,6 @@ When any tool operation encounters a domain failure or gate block:
 }
 ```
 
-Error Codes: `VALIDATION_ERROR`, `NOT_FOUND`, `VERSION_CONFLICT`, `TEST_MODE_DISABLED`, `ALREADY_EXISTS`, `DATABASE_UNAVAILABLE`, `INTERNAL_ERROR`.
+Error Codes: `VALIDATION_ERROR`, `NOT_FOUND`, `VERSION_CONFLICT`, `ALREADY_EXISTS`, `DATABASE_UNAVAILABLE`, `INTERNAL_ERROR`.
+
+Transport authentication (ADR 0003): requests to `/api/mcp` and `/mcp` must carry `Authorization: Bearer <CAMPAIGNOS_PASSWORD>`; failures return HTTP 401 with a JSON body whose error code is `AUTH_REQUIRED`.

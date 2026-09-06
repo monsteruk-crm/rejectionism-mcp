@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth/boundaries";
 import Link from "next/link";
 import { AdminServiceError } from "../_components/service-error";
 import { listContacts } from "@/lib/campaign";
@@ -6,6 +7,7 @@ import { createContactAction } from "../actions";
 export const dynamic = "force-dynamic";
 
 export default async function ContactsListPage() {
+  await requireAdminPage();
   const result = await listContacts({ limit: 100 });
   const contacts = result.ok ? result.data.items : [];
   const total = result.ok ? result.data.total : 0;

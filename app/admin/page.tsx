@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth/boundaries";
 import Link from "next/link";
 import { getCampaignStatus } from "@/lib/campaign";
 import { StatusBadge, PriorityBadge } from "./_components/badge";
@@ -5,6 +6,7 @@ import { StatusBadge, PriorityBadge } from "./_components/badge";
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
+  await requireAdminPage();
   const result = await getCampaignStatus();
 
   if (!result.ok) {

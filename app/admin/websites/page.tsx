@@ -1,3 +1,4 @@
+import { requireAdminPage } from "@/lib/auth/boundaries";
 import Link from "next/link";
 import { AdminServiceError } from "../_components/service-error";
 import { listWebsites } from "@/lib/campaign";
@@ -6,6 +7,7 @@ import { StatusBadge } from "../_components/badge";
 export const dynamic = "force-dynamic";
 
 export default async function WebsitesListPage() {
+  await requireAdminPage();
   const result = await listWebsites({ limit: 100 });
   const websites = result.ok ? result.data.items : [];
 

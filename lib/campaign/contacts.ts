@@ -1,7 +1,6 @@
 import "server-only";
 import { getPrisma } from "@/lib/prisma";
-import { isTestModeEnabled } from "./test-mode";
-import { ok, fail, testModeDisabledResult, handleServiceError, ServiceResult } from "./results";
+import { ok, fail, handleServiceError, ServiceResult } from "./results";
 import {
   CreateContactInputSchema,
   UpdateContactInputSchema,
@@ -54,10 +53,6 @@ export async function createContact(
   rawInput: unknown,
   source: MutationSource = "admin",
 ): Promise<ServiceResult<ContactDto>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   const parsed = CreateContactInputSchema.safeParse(rawInput);
   if (!parsed.success) {
     return handleServiceError(parsed.error);
@@ -107,10 +102,6 @@ export async function updateContact(
   rawInput: unknown,
   source: MutationSource = "admin",
 ): Promise<ServiceResult<ContactDto>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   const parsed = UpdateContactInputSchema.safeParse(rawInput);
   if (!parsed.success) {
     return handleServiceError(parsed.error);
@@ -194,10 +185,6 @@ export async function updateContact(
 }
 
 export async function getContactById(id: string): Promise<ServiceResult<ContactDto>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   try {
     const prisma = getPrisma();
     const item = await prisma.contact.findUnique({
@@ -217,10 +204,6 @@ export async function getContactById(id: string): Promise<ServiceResult<ContactD
 export async function listContacts(
   rawQuery: unknown = {},
 ): Promise<ServiceResult<{ items: ContactDto[]; total: number; limit: number; offset: number }>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   const parsed = ListContactsQuerySchema.safeParse(rawQuery);
   if (!parsed.success) {
     return handleServiceError(parsed.error);

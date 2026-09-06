@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR 0003](0003-single-password-boundary-authentication.md).
 
 ## Context
 

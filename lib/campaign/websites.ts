@@ -1,7 +1,6 @@
 import "server-only";
 import { getPrisma } from "@/lib/prisma";
-import { isTestModeEnabled } from "./test-mode";
-import { ok, fail, testModeDisabledResult, handleServiceError, ServiceResult } from "./results";
+import { ok, fail, handleServiceError, ServiceResult } from "./results";
 import {
   CreateWebsiteInputSchema,
   UpdateWebsiteInputSchema,
@@ -58,10 +57,6 @@ export async function createWebsite(
   rawInput: unknown,
   source: MutationSource = "admin",
 ): Promise<ServiceResult<WebsiteDto>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   const parsed = CreateWebsiteInputSchema.safeParse(rawInput);
   if (!parsed.success) {
     return handleServiceError(parsed.error);
@@ -124,10 +119,6 @@ export async function updateWebsite(
   rawInput: unknown,
   source: MutationSource = "admin",
 ): Promise<ServiceResult<WebsiteDto>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   const parsed = UpdateWebsiteInputSchema.safeParse(rawInput);
   if (!parsed.success) {
     return handleServiceError(parsed.error);
@@ -213,10 +204,6 @@ export async function updateWebsite(
 }
 
 export async function getWebsiteById(id: string): Promise<ServiceResult<WebsiteDto>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   try {
     const prisma = getPrisma();
     const item = await prisma.website.findUnique({
@@ -236,10 +223,6 @@ export async function getWebsiteById(id: string): Promise<ServiceResult<WebsiteD
 export async function listWebsites(
   rawQuery: unknown = {},
 ): Promise<ServiceResult<{ items: WebsiteDto[]; total: number; limit: number; offset: number }>> {
-  if (!isTestModeEnabled()) {
-    return testModeDisabledResult();
-  }
-
   const parsed = ListWebsitesQuerySchema.safeParse(rawQuery);
   if (!parsed.success) {
     return handleServiceError(parsed.error);

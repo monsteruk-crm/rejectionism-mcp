@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { logoutAction } from "../../login/actions";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/admin" },
@@ -38,6 +39,16 @@ export function AdminNav() {
               </Link>
             </li>
           ))}
+          <li>
+            <form action={logoutAction}>
+              <button
+                type="submit"
+                className="block border border-ink bg-ink px-3 py-1 font-heading text-xs font-bold uppercase tracking-wider text-cream transition-colors hover:bg-rejection-red"
+              >
+                Log Out
+              </button>
+            </form>
+          </li>
         </ul>
       </div>
     </nav>

@@ -39,10 +39,23 @@ function expectOk<T>(result: { ok: true; data: T } | { ok: false; error: unknown
 
 afterAll(async () => {
   const prisma = getPrisma();
+  // Restrict foreign keys require deleting children before parents, scoped to
+  // this run's records only (never a table-wide delete).
   await prisma.activity.deleteMany({ where: { entityId: { startsWith: runId } } });
   await prisma.decision.deleteMany({ where: { id: { in: [ids.successor, ids.decision] } } });
   await prisma.workItem.deleteMany({ where: { id: ids.work } });
+
+  const runRevisions = await prisma.assetRevision.findMany({
+    where: { assetId: ids.asset },
+    select: { id: true },
+  });
+  const runRevisionIds = runRevisions.map((revision) => revision.id);
+  await prisma.assetRepresentation.deleteMany({
+    where: { assetRevisionId: { in: runRevisionIds } },
+  });
+  await prisma.assetRevision.deleteMany({ where: { assetId: ids.asset } });
   await prisma.asset.deleteMany({ where: { id: ids.asset } });
+
   await prisma.website.deleteMany({ where: { id: ids.website } });
   await prisma.contact.deleteMany({ where: { id: ids.contact } });
   await prisma.contentItem.deleteMany({ where: { id: ids.content } });
