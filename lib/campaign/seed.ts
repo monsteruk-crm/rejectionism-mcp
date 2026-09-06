@@ -19,7 +19,6 @@ export interface SeedResultSummary {
 }
 
 export async function seedCampaignData(): Promise<ServiceResult<SeedResultSummary>> {
-
   const summary: SeedResultSummary = {
     canon: { created: 0, updated: 0, unchanged: 0 },
     websites: { created: 0, updated: 0, unchanged: 0 },
@@ -234,6 +233,12 @@ export async function seedCampaignData(): Promise<ServiceResult<SeedResultSummar
             continue;
           }
 
+          const hasRepresentation =
+            typeof item.url === "string" && item.url.length > 0 && isExternalHttpUrl(item.url);
+          if (item.status === "APPROVED" && !hasRepresentation) {
+            throw new Error("APPROVED_REQUIRES_REPRESENTATION");
+          }
+
           const created = await tx.asset.create({
             data: {
               id: item.id,
@@ -258,7 +263,7 @@ export async function seedCampaignData(): Promise<ServiceResult<SeedResultSummar
             select: { id: true },
           });
 
-          if (typeof item.url === "string" && item.url.length > 0 && isExternalHttpUrl(item.url)) {
+          if (hasRepresentation) {
             await tx.assetRepresentation.create({
               data: {
                 assetRevisionId: revision.id,
@@ -299,9 +304,10 @@ export async function seedCampaignData(): Promise<ServiceResult<SeedResultSummar
 
     return ok(summary);
   } catch (error) {
-    // The seed runs as an authorized CLI script; surface the raw error so the
-    // operator sees the real failure instead of a generic INTERNAL_ERROR.
-    console.error("Seed transaction failed with raw error:", error);
-    return handleServiceError(error);
+    const failure = handleServiceError(error);
+    if (!failure.ok) {
+      console.error(`Seed transaction failed [${failure.error.code}]: ${failure.error.message}`);
+    }
+    return failure;
   }
 }

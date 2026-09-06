@@ -349,7 +349,7 @@ export const SEED_ASSETS: SeedAsset[] = [
     id: "seed-asset-4a-10",
     name: "Canonical Long-Form Text (THE REJECTIONIST MANIFESTO.md)",
     kind: "text",
-    status: "APPROVED",
+    status: "DRAFT",
     sourceFilename: "THE REJECTIONIST MANIFESTO.md",
     url: null,
     notes:

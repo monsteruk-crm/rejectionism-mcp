@@ -79,6 +79,13 @@ export async function createAsset(
 
   const input = parsed.data;
 
+  if (input.status === "APPROVED" && input.url === null) {
+    return fail(
+      "VALIDATION_ERROR",
+      "APPROVED assets require at least one representation on the latest revision.",
+    );
+  }
+
   // New invalid URLs are rejected; existing legacy rows keep their plain-text URL.
   if (input.url !== null && !isExternalHttpUrl(input.url)) {
     return fail(
@@ -204,8 +211,7 @@ export async function updateAsset(
 
       if (changes.name !== undefined) updateData.name = changes.name;
       if (changes.kind !== undefined) updateData.kind = changes.kind;
-      if (changes.sourceFilename !== undefined)
-        updateData.sourceFilename = changes.sourceFilename;
+      if (changes.sourceFilename !== undefined) updateData.sourceFilename = changes.sourceFilename;
       if (changes.url !== undefined) updateData.url = changes.url;
       if (changes.notes !== undefined) updateData.notes = changes.notes;
 
@@ -232,10 +238,7 @@ export async function updateAsset(
           select: { id: true },
         });
 
-        const {
-          revision,
-          statusAfter: statusAfterRevision,
-        } = await createRevisionTx(tx, {
+        const { revision, statusAfter: statusAfterRevision } = await createRevisionTx(tx, {
           assetId: existing.id,
           label: null,
           notes: null,
@@ -256,8 +259,7 @@ export async function updateAsset(
           expectedVersion: input.expectedVersion,
         });
 
-        statusAfter =
-          existing.status === "APPROVED" ? "NEEDS_WORK" : statusAfterRevision;
+        statusAfter = existing.status === "APPROVED" ? "NEEDS_WORK" : statusAfterRevision;
       }
 
       // An explicitly supplied status wins over mutation-driven transitions,
@@ -376,7 +378,10 @@ export async function getAssetById(id: string): Promise<ServiceResult<AssetDetai
       }),
       prisma.entityRelation.findMany({
         where: {
-          OR: [{ fromEntityType: "ASSET", fromEntityId: id }, { toEntityType: "ASSET", toEntityId: id }],
+          OR: [
+            { fromEntityType: "ASSET", fromEntityId: id },
+            { toEntityType: "ASSET", toEntityId: id },
+          ],
         },
         orderBy: [{ createdAt: "desc" }, { id: "asc" }],
       }),
@@ -521,9 +526,7 @@ export async function listAssets(
       const assetRevisions = revisionsByAsset.get(item.id) ?? [];
       const latestRevision = assetRevisions.reduce<RevisionRowLike | null>(
         (latest, revision) =>
-          latest === null || revision.revisionNumber > latest.revisionNumber
-            ? revision
-            : latest,
+          latest === null || revision.revisionNumber > latest.revisionNumber ? revision : latest,
         null,
       );
       const primary = latestRevision?.representations.find((r) => r.isPrimary) ?? null;

@@ -3,8 +3,8 @@ import { readFileSync } from "node:fs";
 
 // Plain node scripts do not load .env.local automatically, and an inherited
 // shell environment can carry stale DATABASE_URL values from unrelated
-// commands. Resolve both targets from the canonical .env.local first, falling
-// back to the inherited environment only when the file does not define them.
+// commands. Resolve both targets with identical shell-first precedence so the
+// safety comparison checks the exact values that child processes would use.
 function readEnvFileValue(key) {
   const line = readFileSync(".env.local", "utf8")
     .split(/\r?\n/)
@@ -12,13 +12,16 @@ function readEnvFileValue(key) {
   if (!line) {
     return undefined;
   }
-  return line.slice(key.length + 1).trim().replace(/^"(.*)"$/, "$1");
+  return line
+    .slice(key.length + 1)
+    .trim()
+    .replace(/^"(.*)"$/, "$1");
 }
 
 const testDatabaseUrl =
   process.env.TEST_MCP_PRISMA_DATABASE_URL || readEnvFileValue("TEST_MCP_PRISMA_DATABASE_URL");
 const operationalDatabaseUrl =
-  readEnvFileValue("MCP_PRISMA_DATABASE_URL") || process.env.MCP_PRISMA_DATABASE_URL;
+  process.env.MCP_PRISMA_DATABASE_URL || readEnvFileValue("MCP_PRISMA_DATABASE_URL");
 
 if (!testDatabaseUrl) {
   console.error("TEST_MCP_PRISMA_DATABASE_URL must identify a disposable PostgreSQL database.");
@@ -27,7 +30,7 @@ if (!testDatabaseUrl) {
 
 if (!operationalDatabaseUrl || testDatabaseUrl === operationalDatabaseUrl) {
   console.error(
-    "TEST_MCP_PRISMA_DATABASE_URL must differ from the operational MCP_PRISMA_DATABASE_URL (per .env.local) to protect non-test data.",
+    "TEST_MCP_PRISMA_DATABASE_URL must differ from the operational MCP_PRISMA_DATABASE_URL to protect non-test data.",
   );
   process.exit(1);
 }

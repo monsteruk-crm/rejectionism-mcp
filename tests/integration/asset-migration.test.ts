@@ -81,12 +81,7 @@ async function createFixtureAssets() {
   // Deliberately bypass the service: these rows simulate pre-upgrade Assets
   // that must gain revision 1 through the migration/backfill, not at creation.
   await prisma.asset.createMany({
-    data: [
-      fixture.withValidUrl,
-      fixture.filenameOnly,
-      fixture.invalidUrl,
-      fixture.metadataOnly,
-    ],
+    data: [fixture.withValidUrl, fixture.filenameOnly, fixture.invalidUrl, fixture.metadataOnly],
   });
 }
 
@@ -98,7 +93,12 @@ afterAll(async () => {
     where: { entityType: "ASSET", entityId: { in: fixtureIds } },
   });
   await prisma.assetRepresentation.deleteMany({
-    where: { OR: [{ legacyAssetId: { in: fixtureIds } }, { assetRevision: { assetId: { in: fixtureIds } } }] },
+    where: {
+      OR: [
+        { legacyAssetId: { in: fixtureIds } },
+        { assetRevision: { assetId: { in: fixtureIds } } },
+      ],
+    },
   });
   await prisma.assetRevision.deleteMany({ where: { assetId: { in: fixtureIds } } });
   await prisma.asset.deleteMany({ where: { id: { in: fixtureIds } } });
@@ -264,9 +264,7 @@ describe("asset migration, backfill, and seed preservation", () => {
     const run = await backfillLegacyAssets();
     expect(run.ok).toBe(true);
     if (!run.ok) throw new Error(JSON.stringify(run.error));
-    expect(
-      await prisma.assetRepresentation.count({ where: { legacyAssetId: createdId } }),
-    ).toBe(1);
+    expect(await prisma.assetRepresentation.count({ where: { legacyAssetId: createdId } })).toBe(1);
 
     // New invalid URLs are rejected outright.
     const invalidId = `${runId}-created-invalid-url`;
@@ -278,6 +276,24 @@ describe("asset migration, backfill, and seed preservation", () => {
     });
     expect(rejected).toMatchObject({ ok: false, error: { code: "VALIDATION_ERROR" } });
     expect(await prisma.asset.findUnique({ where: { id: invalidId } })).toBeNull();
+
+    // Creation cannot bypass the same representation invariant enforced when
+    // an existing Asset transitions to APPROVED.
+    const approvedWithoutRepresentationId = `${runId}-approved-without-representation`;
+    const approvedWithoutRepresentation = await createAsset({
+      id: approvedWithoutRepresentationId,
+      name: `${runId} approved without representation`,
+      kind: "test",
+      status: "APPROVED",
+      sourceFilename: "filename-only.png",
+    });
+    expect(approvedWithoutRepresentation).toMatchObject({
+      ok: false,
+      error: { code: "VALIDATION_ERROR" },
+    });
+    expect(
+      await prisma.asset.findUnique({ where: { id: approvedWithoutRepresentationId } }),
+    ).toBeNull();
   });
 
   test("rerunning the seed leaves existing seed assets untouched and preserves human edits", async () => {
