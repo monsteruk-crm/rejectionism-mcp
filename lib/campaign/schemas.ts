@@ -377,10 +377,15 @@ export const RegisterAssetInputSchema = z.discriminatedUnion("action", [
 ]);
 export type RegisterAssetInput = z.infer<typeof RegisterAssetInputSchema>;
 
+export const AssetStorageTypeSchema = z.enum(["BLOB", "EXTERNAL_URL"]);
+export type AssetStorageType = z.infer<typeof AssetStorageTypeSchema>;
+
 export const ListAssetsQuerySchema = z
   .object({
     status: AssetStatusSchema.optional(),
     kind: z.string().trim().max(200).optional(),
+    search: z.string().trim().max(200).optional(),
+    storageType: AssetStorageTypeSchema.optional(),
     // Assets must carry ALL listed tag slugs; an unknown slug yields zero.
     tags: z.array(TagSlugSchema).min(1).max(10).optional(),
     limit: z.coerce.number().int().min(1).max(100).default(50),
@@ -491,8 +496,17 @@ export const UpdateContactInputSchema = z
   .strict();
 export type UpdateContactInput = z.infer<typeof UpdateContactInputSchema>;
 
+export const GetContactInputSchema = z
+  .object({
+    id: NonEmptyString(100),
+    includePrivateFields: z.coerce.boolean().default(false),
+  })
+  .strict();
+export type GetContactInput = z.infer<typeof GetContactInputSchema>;
+
 export const ListContactsQuerySchema = z
   .object({
+    includePrivateFields: z.coerce.boolean().default(false),
     limit: z.coerce.number().int().min(1).max(100).default(50),
     offset: z.coerce.number().int().min(0).max(10000).default(0),
   })

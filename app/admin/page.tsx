@@ -60,6 +60,24 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
 
+      {/* Prominent Global Search Bar */}
+      <div className="border-2 border-ink bg-paper p-4 shadow-[3px_3px_0px_0px_rgba(13,13,13,1)]">
+        <form method="GET" action="/admin/search" className="flex flex-col gap-2 sm:flex-row">
+          <input
+            type="text"
+            name="q"
+            placeholder="Search across all CampaignOS registers, work items, canon, decisions, assets, tags..."
+            className="flex-1 border-2 border-ink bg-cream p-2 font-sans text-xs text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
+          />
+          <button
+            type="submit"
+            className="border-2 border-ink bg-ink px-5 py-2 font-heading text-xs font-bold uppercase tracking-widest text-cream hover:bg-rejection-red"
+          >
+            Search
+          </button>
+        </form>
+      </div>
+
       {/* Status Counters */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {[

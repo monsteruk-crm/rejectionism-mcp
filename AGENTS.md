@@ -17,7 +17,7 @@ Start source inspection at task-defined or documented entry points. Follow impor
 
 ## Project Structure & Module Organization
 
-This minimal Next.js 15 App Router application exposes a stateless Model Context Protocol (MCP) server. The main implementation is `app/mcp/route.ts`; keep tools, prompts, and resources there unless a feature warrants a separate module. `scripts/test-client.mjs` is the MCP smoke-test client. Static files belong in `public/`; root-level files configure the application and tooling.
+This Next.js 16 App Router application exposes both an administrative web interface (`/admin`) and a Model Context Protocol (MCP) server. The canonical MCP implementation is `app/api/mcp/route.ts` (with legacy compatibility at `app/mcp/route.ts`), powered by the shared domain service layer in `lib/campaign/`. `scripts/test-client.mjs` is the MCP smoke-test client. Static files belong in `public/`; root-level files configure the application and tooling.
 
 ## Build, Test, and Development Commands
 
@@ -29,7 +29,9 @@ Use pnpm 8.15.7. Prisma 7 requires Node.js 20.19+, 22.12+, or 24+; Node 22.21.1 
 - `pnpm start` serves the completed production build.
 - `pnpm type-check` runs TypeScript in strict, no-emit mode.
 - `pnpm lint` checks the repository with ESLint and Next.js Core Web Vitals rules.
-- `pnpm test:client -- http://localhost:3000` connects to a running server, lists tools, and calls `echo` and `check_database`. Always pass the target origin explicitly.
+- `pnpm test` runs the unit test suite with Vitest.
+- `pnpm test:integration` runs integration tests against a disposable PostgreSQL database (`TEST_MCP_PRISMA_DATABASE_URL`).
+- `pnpm test:client -- http://localhost:3000` connects to a running server, lists tools, and executes smoke checks. Always pass the target origin explicitly.
 
 ## Coding Style & Naming Conventions
 
@@ -37,7 +39,7 @@ Write strict TypeScript for application code and modern ESM JavaScript for scrip
 
 ## Testing Guidelines
 
-There is currently no unit-test framework or coverage threshold. For application code changes, run `pnpm lint`, `pnpm type-check`, and `pnpm build` before handoff, unless the user explicitly defers verification. For protocol changes, start the app and run the client smoke test against it. For documentation-only changes, check links, consistency, and `git diff --check`; do not run application checks solely for prose edits. If adding automated tests, place them beside the code as `*.test.ts` or under a focused `tests/` directory, and add the corresponding pnpm script.
+Unit tests reside in `tests/unit/*.test.ts` and verify Zod schemas, boundary authentication, and isolated helpers without database dependencies. Integration tests reside in `tests/integration/*.test.ts` and run against a disposable database. For application code changes, run `pnpm type-check`, `pnpm test`, and `pnpm build` before handoff. For protocol changes, run the client smoke test against a running local server. For documentation-only changes, check links, consistency, and `git diff --check`.
 
 Report implemented, inspected, locally tested, and deployed verification separately. Record the actual target and date. A successful `SELECT 1` proves connectivity, not table access, migration correctness, write permissions, or business workflows. Never report an unexecuted runbook as passing.
 

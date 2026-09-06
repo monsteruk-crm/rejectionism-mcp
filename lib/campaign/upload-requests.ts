@@ -3,7 +3,7 @@ import { getPrisma } from "@/lib/prisma";
 import { ok, fail, handleServiceError, ServiceResult } from "./results";
 import { createActivityTx } from "./activity";
 import { getTrustedOrigin } from "../auth/origin";
-import { generateUploadToken, hashUploadToken } from "./upload-tokens";
+import { generateUploadToken, hashUploadToken, isRawUploadToken } from "./upload-tokens";
 import {
   CreateUploadRequestInputSchema,
   GetUploadRequestInputSchema,
@@ -331,6 +331,86 @@ export async function listUploadRequests(
       total,
       limit,
       offset,
+    });
+  } catch (error) {
+    return handleServiceError(error);
+  }
+}
+
+export async function getPublicUploadRequest(
+  rawToken: string,
+): Promise<
+  ServiceResult<{
+    title: string;
+    instructions: string;
+    expiresAt: string;
+    maxItems: number;
+    targetingMode: "NEW_ASSETS" | "NEW_REVISION" | "APPEND_REPRESENTATIONS";
+    status: EffectiveUploadRequestStatus;
+    submissionReceipt?: {
+      submissionKey: string;
+      submittedAt: string;
+      itemCount: number;
+    } | null;
+  }>
+> {
+  if (!isRawUploadToken(rawToken)) {
+    return fail("NOT_FOUND", "Upload link not found.");
+  }
+
+  try {
+    const prisma = getPrisma();
+    const tokenHash = await hashUploadToken(rawToken);
+
+    const request = await prisma.uploadRequest.findUnique({
+      where: { tokenHash },
+      select: {
+        title: true,
+        instructions: true,
+        status: true,
+        expiresAt: true,
+        maxItems: true,
+        targetAssetId: true,
+        targetRevisionId: true,
+        submissionReceipt: true,
+      },
+    });
+
+    if (!request) {
+      return fail("NOT_FOUND", "Upload link not found.");
+    }
+
+    const effectiveStatus = getEffectiveUploadRequestStatus(
+      request.status,
+      request.expiresAt,
+    );
+
+    let targetingMode: "NEW_ASSETS" | "NEW_REVISION" | "APPEND_REPRESENTATIONS" = "NEW_ASSETS";
+    if (request.targetRevisionId) {
+      targetingMode = "APPEND_REPRESENTATIONS";
+    } else if (request.targetAssetId) {
+      targetingMode = "NEW_REVISION";
+    }
+
+    const receipt = request.submissionReceipt as
+      | { submissionKey?: string; submittedAt?: string; itemCount?: number }
+      | null
+      | undefined;
+
+    return ok({
+      title: request.title,
+      instructions: request.instructions,
+      expiresAt: request.expiresAt.toISOString(),
+      maxItems: request.maxItems,
+      targetingMode,
+      status: effectiveStatus,
+      submissionReceipt: receipt
+        ? {
+            submissionKey: receipt.submissionKey ?? "",
+            submittedAt: receipt.submittedAt ?? "",
+            itemCount: receipt.itemCount ?? 0,
+          }
+        : null,
     });
   } catch (error) {
     return handleServiceError(error);

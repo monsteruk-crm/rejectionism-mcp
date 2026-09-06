@@ -1,23 +1,37 @@
 import { requireAdminPage } from "@/lib/auth/boundaries";
 import Link from "next/link";
 import { AdminServiceError } from "../_components/service-error";
-import { listAssets } from "@/lib/campaign";
-import { StatusBadge } from "../_components/badge";
-import { createAssetAction } from "../actions";
+import { listAssets, AssetStatus, AssetStorageType } from "@/lib/campaign";
+import { AssetCard } from "./_components/asset-card";
+import { CreateAssetPanel } from "./_components/create-asset-modals";
 
 export const dynamic = "force-dynamic";
 
 export default async function AssetsListPage(props: {
-  searchParams: Promise<{ status?: string; kind?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    kind?: string;
+    search?: string;
+    storageType?: string;
+    tags?: string;
+  }>;
 }) {
   await requireAdminPage();
   const searchParams = await props.searchParams;
-  const statusFilter = searchParams.status;
+  const statusFilter = searchParams.status as AssetStatus | undefined;
   const kindFilter = searchParams.kind;
+  const searchFilter = searchParams.search;
+  const storageTypeFilter = searchParams.storageType as AssetStorageType | undefined;
+  const tagsFilter = searchParams.tags
+    ? searchParams.tags.split(",").map((t) => t.trim()).filter(Boolean)
+    : undefined;
 
   const result = await listAssets({
     status: statusFilter,
     kind: kindFilter,
+    search: searchFilter,
+    storageType: storageTypeFilter,
+    tags: tagsFilter,
     limit: 100,
   });
 
@@ -26,7 +40,8 @@ export default async function AssetsListPage(props: {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-2 border-b-2 border-ink pb-4 sm:flex-row sm:items-end sm:justify-between">
+      {/* Page Header */}
+      <div className="flex flex-col gap-3 border-b-2 border-ink pb-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-heading text-xs font-bold uppercase tracking-wider text-rejection-red">
             Visual Propaganda & Deliverables
@@ -35,216 +50,160 @@ export default async function AssetsListPage(props: {
             Visual Assets ({result.ok ? total : "Unavailable"})
           </h1>
         </div>
-        <Link
-          href="/admin"
-          className="text-xs font-bold uppercase tracking-wider text-ink/70 hover:text-ink"
-        >
-          &larr; Back to Dashboard
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href="/admin/assets/upload"
+            className="border-2 border-ink bg-ink px-4 py-2 font-heading text-xs font-bold uppercase tracking-wider text-cream hover:bg-rejection-red"
+          >
+            Bulk Upload &rarr;
+          </Link>
+          <Link
+            href="/admin/upload-links"
+            className="border-2 border-ink bg-cream px-4 py-2 font-heading text-xs font-bold uppercase tracking-wider text-ink hover:bg-paper"
+          >
+            Upload Links
+          </Link>
+          <Link
+            href="/admin"
+            className="text-xs font-bold uppercase tracking-wider text-ink/70 hover:text-ink"
+          >
+            Dashboard
+          </Link>
+        </div>
       </div>
 
       {!result.ok && <AdminServiceError error={result.error} />}
 
-      {/* Filter Bar */}
-      <div className="flex flex-wrap items-center gap-2 border-2 border-ink bg-paper p-3 font-heading text-xs uppercase">
-        <span className="font-bold">Filter Status:</span>
-        {[
-          { label: "All", value: undefined },
-          { label: "Missing", value: "MISSING" },
-          { label: "Needs Work", value: "NEEDS_WORK" },
-          { label: "Draft", value: "DRAFT" },
-          { label: "Approved", value: "APPROVED" },
-          { label: "Superseded", value: "SUPERSEDED" },
-        ].map((f) => (
-          <Link
-            key={f.label}
-            href={f.value ? `/admin/assets?status=${f.value}` : "/admin/assets"}
-            className={`border px-3 py-1 font-bold ${
-              statusFilter === f.value || (!statusFilter && !f.value)
-                ? "border-ink bg-ink text-cream"
-                : "border-ink/30 bg-cream text-ink hover:border-ink"
-            }`}
+      {/* Search & Filter Controls */}
+      <div className="space-y-3 border-2 border-ink bg-paper p-4 font-heading text-xs uppercase">
+        {/* Text Search Form */}
+        <form method="GET" className="flex flex-wrap items-center gap-2">
+          {statusFilter && <input type="hidden" name="status" value={statusFilter} />}
+          {storageTypeFilter && <input type="hidden" name="storageType" value={storageTypeFilter} />}
+          {kindFilter && <input type="hidden" name="kind" value={kindFilter} />}
+
+          <div className="flex flex-1 items-center gap-2">
+            <span className="font-bold">Search:</span>
+            <input
+              type="text"
+              name="search"
+              defaultValue={searchFilter || ""}
+              placeholder="Filter by name, kind, notes, or filename..."
+              className="w-full border-2 border-ink bg-cream p-1.5 font-sans text-xs text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="border border-ink bg-ink px-4 py-1.5 font-bold text-cream hover:bg-rejection-red"
           >
-            {f.label}
-          </Link>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        {/* Assets Table */}
-        <div className="border-2 border-ink bg-paper p-6 shadow-[4px_4px_0px_0px_rgba(13,13,13,1)] lg:col-span-2">
-          {!result.ok ? (
-            <p className="text-xs font-bold text-rejection-red">Register unavailable.</p>
-          ) : assets.length === 0 ? (
-            <p className="text-xs italic text-ink/70">No assets match the filter.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left font-sans text-xs">
-                <thead className="border-b-2 border-ink font-heading uppercase text-ink">
-                  <tr>
-                    <th className="py-2 pr-4">Name / Filename</th>
-                    <th className="py-2 pr-2">Kind</th>
-                    <th className="py-2 pr-2">Status</th>
-                    <th className="py-2 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-ink/15">
-                  {assets.map((asset) => (
-                    <tr key={asset.id} className="hover:bg-cream">
-                      <td className="py-3 pr-4">
-                        <Link
-                          href={`/admin/assets/${asset.id}`}
-                          className="font-heading text-sm font-bold text-ink hover:text-rejection-red"
-                        >
-                          {asset.name}
-                        </Link>
-                        {asset.sourceFilename && (
-                          <p className="font-mono text-[11px] text-ink/60">
-                            Source: {asset.sourceFilename}
-                          </p>
-                        )}
-                        {asset.url && (
-                          <a
-                            href={asset.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="font-mono text-[11px] text-rejection-red underline"
-                          >
-                            {asset.url}
-                          </a>
-                        )}
-                      </td>
-                      <td className="py-3 pr-2 font-mono text-xs uppercase text-ink/70 whitespace-nowrap">
-                        {asset.kind}
-                      </td>
-                      <td className="py-3 pr-2 whitespace-nowrap">
-                        <StatusBadge status={asset.status} />
-                      </td>
-                      <td className="py-3 text-right whitespace-nowrap">
-                        <Link
-                          href={`/admin/assets/${asset.id}`}
-                          className="border border-ink bg-cream px-2 py-1 font-heading text-[11px] font-bold uppercase hover:bg-ink hover:text-cream"
-                        >
-                          Edit
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Register Asset Form */}
-        <div className="border-2 border-ink bg-paper p-6 shadow-[4px_4px_0px_0px_rgba(13,13,13,1)]">
-          <h2 className="border-b-2 border-ink pb-2 font-heading text-xl font-black uppercase">
-            Register Asset Metadata
-          </h2>
-
-          <form action={createAssetAction} className="mt-4 space-y-4 text-xs font-sans">
-            <div>
-              <label htmlFor="name" className="block font-heading font-bold uppercase text-ink">
-                Asset Name *
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                required
-                maxLength={200}
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                placeholder="e.g. Primary Seal Vector Master"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="kind" className="block font-heading font-bold uppercase text-ink">
-                Kind *
-              </label>
-              <input
-                type="text"
-                id="kind"
-                name="kind"
-                required
-                maxLength={200}
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 font-mono text-xs text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                placeholder="e.g. logo, banner, poster, artwork"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="status" className="block font-heading font-bold uppercase text-ink">
-                Workflow Status
-              </label>
-              <select
-                id="status"
-                name="status"
-                defaultValue="DRAFT"
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 font-heading uppercase text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-              >
-                <option value="MISSING">MISSING</option>
-                <option value="DRAFT">DRAFT</option>
-                <option value="NEEDS_WORK">NEEDS_WORK</option>
-                <option value="APPROVED">APPROVED</option>
-                <option value="SUPERSEDED">SUPERSEDED</option>
-              </select>
-            </div>
-
-            <div>
-              <label
-                htmlFor="sourceFilename"
-                className="block font-heading font-bold uppercase text-ink"
-              >
-                Source Filename
-              </label>
-              <input
-                type="text"
-                id="sourceFilename"
-                name="sourceFilename"
-                maxLength={20000}
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 font-mono text-xs text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                placeholder="e.g. official logo and slogan.png"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="url" className="block font-heading font-bold uppercase text-ink">
-                Asset URL (HTTP/HTTPS)
-              </label>
-              <input
-                type="url"
-                id="url"
-                name="url"
-                maxLength={2048}
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 font-mono text-xs text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                placeholder="https://example.com/asset.png"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="notes" className="block font-heading font-bold uppercase text-ink">
-                Production Notes
-              </label>
-              <textarea
-                id="notes"
-                name="notes"
-                rows={3}
-                maxLength={20000}
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                placeholder="Export requirements, resolution, or provenance"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full border-2 border-ink bg-ink py-2 font-heading text-xs font-bold uppercase tracking-widest text-cream hover:bg-rejection-red"
+            Filter
+          </button>
+          {(searchFilter || statusFilter || storageTypeFilter || kindFilter || tagsFilter) && (
+            <Link
+              href="/admin/assets"
+              className="border border-ink/30 bg-cream px-3 py-1.5 font-bold text-ink hover:border-ink"
             >
-              Register Asset
-            </button>
-          </form>
+              Reset
+            </Link>
+          )}
+        </form>
+
+        {/* Filter Pills */}
+        <div className="flex flex-wrap items-center gap-4 border-t border-ink/15 pt-3">
+          {/* Status Filter */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="font-bold text-ink/70">Status:</span>
+            {[
+              { label: "All", value: undefined },
+              { label: "Missing", value: "MISSING" },
+              { label: "Draft", value: "DRAFT" },
+              { label: "Needs Work", value: "NEEDS_WORK" },
+              { label: "Approved", value: "APPROVED" },
+              { label: "Superseded", value: "SUPERSEDED" },
+            ].map((f) => {
+              const params = new URLSearchParams();
+              if (searchFilter) params.set("search", searchFilter);
+              if (storageTypeFilter) params.set("storageType", storageTypeFilter);
+              if (kindFilter) params.set("kind", kindFilter);
+              if (f.value) params.set("status", f.value);
+              const href = params.toString() ? `/admin/assets?${params.toString()}` : "/admin/assets";
+
+              return (
+                <Link
+                  key={f.label}
+                  href={href}
+                  className={`border px-2.5 py-0.5 font-bold ${
+                    statusFilter === f.value || (!statusFilter && !f.value)
+                      ? "border-ink bg-ink text-cream"
+                      : "border-ink/30 bg-cream text-ink hover:border-ink"
+                  }`}
+                >
+                  {f.label}
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Storage Type Filter */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="font-bold text-ink/70">Storage:</span>
+            {[
+              { label: "All", value: undefined },
+              { label: "Blob Files", value: "BLOB" },
+              { label: "External URL", value: "EXTERNAL_URL" },
+            ].map((f) => {
+              const params = new URLSearchParams();
+              if (searchFilter) params.set("search", searchFilter);
+              if (statusFilter) params.set("status", statusFilter);
+              if (kindFilter) params.set("kind", kindFilter);
+              if (f.value) params.set("storageType", f.value);
+              const href = params.toString() ? `/admin/assets?${params.toString()}` : "/admin/assets";
+
+              return (
+                <Link
+                  key={f.label}
+                  href={href}
+                  className={`border px-2.5 py-0.5 font-bold ${
+                    storageTypeFilter === f.value || (!storageTypeFilter && !f.value)
+                      ? "border-ink bg-ink text-cream"
+                      : "border-ink/30 bg-cream text-ink hover:border-ink"
+                  }`}
+                >
+                  {f.label}
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </div>
+
+      {/* Asset Grid */}
+      <div>
+        {!result.ok ? (
+          <div className="border-2 border-ink bg-paper p-8 text-center">
+            <p className="text-xs font-bold text-rejection-red">Register unavailable.</p>
+          </div>
+        ) : assets.length === 0 ? (
+          <div className="border-2 border-ink bg-paper p-12 text-center">
+            <p className="font-heading text-base font-bold uppercase text-ink/70">
+              No assets match the active filters.
+            </p>
+            <p className="mt-1 text-xs text-ink/50">
+              Try adjusting your search query or reset the filters above.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {assets.map((asset) => (
+              <AssetCard key={asset.id} asset={asset} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Create Asset Panel */}
+      <CreateAssetPanel />
     </div>
   );
 }
