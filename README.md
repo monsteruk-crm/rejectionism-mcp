@@ -114,3 +114,5 @@ pnpm test:client -- http://localhost:3000
 ## Roadmap
 
 Authentication is implemented (single shared credential with stateless signed sessions, [ADR 0003](docs/adr/0003-single-password-boundary-authentication.md)). Per-user identity providers (OAuth 2.0 / CIMD) remain future work. Upcoming milestones add asset storage, Blob-backed uploads with upload links, MCP/Admin management parity, and global search.
+
+
