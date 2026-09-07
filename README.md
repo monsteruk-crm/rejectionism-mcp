@@ -14,6 +14,7 @@ The operational headquarters for **REJECTIONISM**, the satirical art movement bu
 - [MCP Tools Contract (47 Tools)](docs/contracts/mcp-tools.md)
 - [Assets and Uploads Contract](docs/contracts/assets-and-uploads.md)
 - [Asset Storage & Blob Runbook](docs/runbooks/asset-storage.md)
+- [Backup and Disaster Recovery Runbook](docs/runbooks/backup-restore.md)
 - [Local Development Runbook](docs/runbooks/local-development.md)
 - [Manual Acceptance Scenarios](docs/runbooks/manual-acceptance.md)
 - [Vercel Deployment Runbook](docs/runbooks/vercel-deployment.md)
@@ -114,8 +115,18 @@ MCP requests require `Authorization: Bearer <CAMPAIGNOS_PASSWORD>`.
 }
 ```
 
-### Running the Smoke Client:
+### Running Test and Verification Suites:
 
 ```bash
+# Run unit tests
+pnpm test
+
+# Run MCP protocol suite
+pnpm test:mcp --origin=http://localhost:3000
+
+# Run functional release verification gate
+pnpm verify:functional --origin=http://localhost:3000
+
+# Run smoke client
 pnpm test:client -- http://localhost:3000
 ```

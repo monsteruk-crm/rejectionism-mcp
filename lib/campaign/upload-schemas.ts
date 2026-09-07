@@ -47,11 +47,12 @@ export const CreateUploadRequestInputSchema = z
   .strict();
 export type CreateUploadRequestInput = z.infer<typeof CreateUploadRequestInputSchema>;
 
-export const UploadRequestStatusFilterSchema = z.enum(["OPEN", "SUBMITTED", "REVOKED"]);
+export const UploadRequestStatusFilterSchema = z.enum(["OPEN", "SUBMITTED", "REVOKED", "EXPIRED"]);
 
 export const ListUploadRequestsQuerySchema = z
   .object({
     status: UploadRequestStatusFilterSchema.optional(),
+    targetAssetId: UploadIdSchema.optional(),
     limit: z.coerce.number().int().min(1).max(100).default(50),
     offset: z.coerce.number().int().min(0).max(10000).default(0),
   })

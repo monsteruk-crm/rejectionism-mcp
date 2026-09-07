@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AdminServiceError } from "../_components/service-error";
 import { searchCampaign, OriginalEntityType } from "@/lib/campaign";
 import { StatusBadge } from "../_components/badge";
+import { Pagination } from "../_components/pagination";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default async function GlobalSearchPage(props: {
     q?: string;
     types?: string;
     tags?: string;
+    offset?: string;
   }>;
 }) {
   await requireAdminPage();
@@ -28,6 +30,7 @@ export default async function GlobalSearchPage(props: {
   const q = searchParams.q ? searchParams.q.trim() : "";
   const typesParam = searchParams.types;
   const tagsParam = searchParams.tags;
+  const offset = searchParams.offset ? Math.max(0, parseInt(searchParams.offset, 10) || 0) : 0;
 
   const selectedTypes = typesParam
     ? (typesParam.split(",").map((t) => t.trim()).filter(Boolean) as OriginalEntityType[])
@@ -43,7 +46,8 @@ export default async function GlobalSearchPage(props: {
       query: q,
       entityTypes: selectedTypes,
       tags: selectedTags,
-      limit: 50,
+      limit: 25,
+      offset,
     });
   }
 
@@ -225,6 +229,16 @@ export default async function GlobalSearchPage(props: {
                   </Link>
                 </div>
               ))}
+
+              <div className="pt-4">
+                <Pagination
+                  total={searchResult.data.total}
+                  limit={25}
+                  offset={offset}
+                  basePath="/admin/search"
+                  searchParams={searchParams}
+                />
+              </div>
             </div>
           )}
         </div>

@@ -753,7 +753,7 @@ export function registerCampaignTools(server: McpServer) {
           ok: true,
           data: {
             uploadRequest: detail.data.request,
-            changed: res.data.status === "REVOKED",
+            changed: !res.data.noop,
           },
         } as any,
         (data: any) => `Upload link revoked (Status: ${data.uploadRequest.status}).`,

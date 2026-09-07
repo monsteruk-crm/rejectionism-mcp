@@ -3,22 +3,25 @@ import Link from "next/link";
 import { AdminServiceError } from "../_components/service-error";
 import { listWorkItems } from "@/lib/campaign";
 import { StatusBadge, PriorityBadge } from "../_components/badge";
-import { createWorkItemAction } from "../actions";
+import { CreateWorkItemForm } from "../_components/forms/work-item-form";
+import { Pagination } from "../_components/pagination";
 
 export const dynamic = "force-dynamic";
 
 export default async function WorkItemsListPage(props: {
-  searchParams: Promise<{ status?: string; search?: string }>;
+  searchParams: Promise<{ status?: string; search?: string; offset?: string }>;
 }) {
   await requireAdminPage();
   const searchParams = await props.searchParams;
   const statusFilter = searchParams.status;
   const searchQuery = searchParams.search;
+  const offset = searchParams.offset ? Math.max(0, parseInt(searchParams.offset, 10) || 0) : 0;
 
   const result = await listWorkItems({
     status: statusFilter,
     search: searchQuery,
-    limit: 100,
+    limit: 25,
+    offset,
   });
 
   const items = result.ok ? result.data.items : [];
@@ -131,144 +134,22 @@ export default async function WorkItemsListPage(props: {
               </table>
             </div>
           )}
+
+          {result.ok && (
+            <div className="mt-4 border-t border-ink/20 pt-4">
+              <Pagination
+                total={total}
+                limit={25}
+                offset={offset}
+                basePath="/admin/work-items"
+                searchParams={searchParams}
+              />
+            </div>
+          )}
         </div>
 
         {/* Create Work Item Form */}
-        <div className="border-2 border-ink bg-paper p-6 shadow-[4px_4px_0px_0px_rgba(13,13,13,1)]">
-          <h2 className="border-b-2 border-ink pb-2 font-heading text-xl font-black uppercase">
-            Create Work Item
-          </h2>
-
-          <form action={createWorkItemAction} className="mt-4 space-y-4 text-xs font-sans">
-            <div>
-              <label htmlFor="title" className="block font-heading font-bold uppercase text-ink">
-                Title *
-              </label>
-              <input
-                type="text"
-                id="title"
-                name="title"
-                required
-                maxLength={200}
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                placeholder="e.g. Publish launch poster"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="description"
-                className="block font-heading font-bold uppercase text-ink"
-              >
-                Description
-              </label>
-              <textarea
-                id="description"
-                name="description"
-                rows={3}
-                maxLength={20000}
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                placeholder="Operational context and criteria"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label htmlFor="status" className="block font-heading font-bold uppercase text-ink">
-                  Status
-                </label>
-                <select
-                  id="status"
-                  name="status"
-                  defaultValue="BACKLOG"
-                  className="mt-1 w-full border-2 border-ink bg-cream p-2 font-heading uppercase text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                >
-                  <option value="BACKLOG">BACKLOG</option>
-                  <option value="NEXT">NEXT</option>
-                  <option value="IN_PROGRESS">IN_PROGRESS</option>
-                  <option value="BLOCKED">BLOCKED</option>
-                  <option value="DONE">DONE</option>
-                </select>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="priority"
-                  className="block font-heading font-bold uppercase text-ink"
-                >
-                  Priority (0-100)
-                </label>
-                <input
-                  type="number"
-                  id="priority"
-                  name="priority"
-                  min={0}
-                  max={100}
-                  defaultValue={0}
-                  className="mt-1 w-full border-2 border-ink bg-cream p-2 font-mono text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label
-                htmlFor="blockedReason"
-                className="block font-heading font-bold uppercase text-ink"
-              >
-                Blocked Reason (if BLOCKED)
-              </label>
-              <input
-                type="text"
-                id="blockedReason"
-                name="blockedReason"
-                maxLength={20000}
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                placeholder="Required if status is BLOCKED"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="evidenceUrl"
-                className="block font-heading font-bold uppercase text-ink"
-              >
-                Evidence URL (if DONE)
-              </label>
-              <input
-                type="url"
-                id="evidenceUrl"
-                name="evidenceUrl"
-                maxLength={2048}
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 font-mono text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                placeholder="https://example.com/evidence"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="completionNote"
-                className="block font-heading font-bold uppercase text-ink"
-              >
-                Completion Note (if DONE)
-              </label>
-              <textarea
-                id="completionNote"
-                name="completionNote"
-                rows={2}
-                maxLength={20000}
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                placeholder="Required for DONE if no URL"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full border-2 border-ink bg-ink py-2 font-heading text-xs font-bold uppercase tracking-widest text-cream hover:bg-rejection-red"
-            >
-              Create Item
-            </button>
-          </form>
-        </div>
+        <CreateWorkItemForm />
       </div>
     </div>
   );

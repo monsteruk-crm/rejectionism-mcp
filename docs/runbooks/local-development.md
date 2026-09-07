@@ -82,6 +82,12 @@ pnpm test:watch
 # must be a disposable PostgreSQL database and must differ from MCP_PRISMA_DATABASE_URL.
 TEST_MCP_PRISMA_DATABASE_URL=postgresql://... pnpm test:integration
 
+# Run MCP protocol suite against running server
+pnpm test:mcp --origin=http://localhost:3000
+
+# Run functional release verification gate
+pnpm verify:functional --origin=http://localhost:3000
+
 # Format code with Prettier
 pnpm format
 pnpm format:check

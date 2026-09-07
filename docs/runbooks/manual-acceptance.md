@@ -219,12 +219,29 @@ CAMPAIGNOS_PASSWORD="<your-configured-password>" pnpm test:client -- http://loca
 
 ---
 
-## 5. Summary Checklist for Release Verification
+## 5. End-to-End Human Acceptance Walkthrough
+
+Execute the following sequential scenario using disposable test fixtures:
+
+1. **Login**: Navigate to `/login`, enter `CAMPAIGNOS_PASSWORD`, and submit. Verify redirection to `/admin`.
+2. **Create Work Item**: Click `+ Work Item` on the dashboard. Submit an empty form to verify inline field error feedback without loss of entered text. Fill title `Acceptance Test Work Item`, priority `50`, status `BACKLOG`. Verify created record appears with "View record".
+3. **Select & Link Asset**: On the work item page, click `+ Link Entity`. Select relation `USES_ASSET` (which restricts target type to `ASSET`). Use `EntityPicker` to search and select an asset (e.g. `logo` or `poster`). Save relationship and verify directed link `USES_ASSET` is visible.
+4. **Internal Bulk Upload**: Navigate to `/admin/assets/upload`. Select `Separate New Assets`. Click `Start Upload Session`. Drag and drop or browse test image files. Verify per-row upload progress and automatic byte verification. Finalize and verify resulting asset links.
+5. **Inspect Revision & Primary**: Open the created asset detail page. Verify Revision 1 exists with one primary representation. Add a secondary external URL representation -> verify primary remains on the first item unless switched.
+6. **Workflow Status & Concurrency**: Change asset status to `APPROVED`. Verify allowed because a valid representation exists.
+7. **Complete Work Item**: Return to `Acceptance Test Work Item`. Move status to `DONE` and provide a completion note or evidence URL. Submit and verify status updates to `DONE`.
+8. **Search & Discovery**: In the global search bar, query `Acceptance Test`. Verify the work item appears in results with snippets and tags.
+9. **MCP Protocol Read**: Query `campaign_search` or `campaign_get_work_item` using `test:client` to verify external protocol parity.
+10. **Logout**: Click `Log Out` in navigation and verify session destruction.
+
+---
+
+## 6. Summary Checklist for Release Verification
 
 - [ ] `pnpm db:validate` — Prisma schema is valid.
 - [ ] `pnpm type-check` — Strict TypeScript compilation passes with 0 errors.
-- [ ] `pnpm test` — All 149 unit tests pass across 15 test files.
-- [ ] `pnpm test:integration` — All 47 integration tests pass against disposable PostgreSQL (`TEST_MCP_PRISMA_DATABASE_URL`).
+- [ ] `pnpm test` — All unit tests pass.
+- [ ] `pnpm test:integration` — Integration tests pass against disposable PostgreSQL (`TEST_MCP_PRISMA_DATABASE_URL`).
 - [ ] `pnpm test:client -- http://localhost:3000` — MCP smoke client reads succeed on `/api/mcp` and `/mcp` across all 47 tools.
-- [ ] Browser Acceptance Scenarios 1–7 complete without runtime exceptions or UI clipping.
+- [ ] Browser Acceptance Scenarios 1–7 and End-to-End Walkthrough complete without errors.
 - [ ] `git --no-pager diff --check` — No merge markers, trailing whitespace, or uncommitted secrets.

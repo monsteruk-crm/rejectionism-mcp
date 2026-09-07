@@ -2,20 +2,23 @@ import { requireAdminPage } from "@/lib/auth/boundaries";
 import Link from "next/link";
 import { AdminServiceError } from "../_components/service-error";
 import { getCanon } from "@/lib/campaign";
-import { createCanonEntryAction } from "../actions";
+import { CreateCanonForm } from "../_components/forms/canon-form";
+import { Pagination } from "../_components/pagination";
 
 export const dynamic = "force-dynamic";
 
 export default async function CanonListPage(props: {
-  searchParams: Promise<{ category?: string }>;
+  searchParams: Promise<{ category?: string; offset?: string }>;
 }) {
   await requireAdminPage();
   const searchParams = await props.searchParams;
   const categoryFilter = searchParams.category;
+  const offset = searchParams.offset ? Math.max(0, parseInt(searchParams.offset, 10) || 0) : 0;
 
   const result = await getCanon({
     category: categoryFilter,
-    limit: 100,
+    limit: 25,
+    offset,
   });
 
   const items =
@@ -24,6 +27,13 @@ export default async function CanonListPage(props: {
       : result.ok && result.data.mode === "single"
         ? [result.data.entry]
         : [];
+
+  const total =
+    result.ok && result.data.mode === "collection"
+      ? result.data.total
+      : result.ok && result.data.mode === "single"
+        ? 1
+        : 0;
 
   const categories = Array.from(new Set(items.map((i) => i.category))).sort();
 
@@ -93,82 +103,22 @@ export default async function CanonListPage(props: {
               </table>
             </div>
           )}
+
+          {result.ok && (
+            <div className="mt-4 border-t border-ink/20 pt-4">
+              <Pagination
+                total={total}
+                limit={25}
+                offset={offset}
+                basePath="/admin/canon"
+                searchParams={searchParams}
+              />
+            </div>
+          )}
         </div>
 
         {/* Create Canon Entry Form */}
-        <div className="border-2 border-ink bg-paper p-6 shadow-[4px_4px_0px_0px_rgba(13,13,13,1)]">
-          <h2 className="border-b-2 border-ink pb-2 font-heading text-xl font-black uppercase">
-            Add Canon Entry
-          </h2>
-
-          <form action={createCanonEntryAction} className="mt-4 space-y-4 text-xs font-sans">
-            <div>
-              <label htmlFor="key" className="block font-heading font-bold uppercase text-ink">
-                Unique Key *
-              </label>
-              <input
-                type="text"
-                id="key"
-                name="key"
-                required
-                maxLength={200}
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 font-mono text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                placeholder="e.g. movement.anthem"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="value" className="block font-heading font-bold uppercase text-ink">
-                Canonical Value *
-              </label>
-              <textarea
-                id="value"
-                name="value"
-                required
-                rows={3}
-                maxLength={20000}
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                placeholder="Authoritative slogan, title, or rule"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="category" className="block font-heading font-bold uppercase text-ink">
-                Category *
-              </label>
-              <input
-                type="text"
-                id="category"
-                name="category"
-                required
-                maxLength={200}
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 font-heading uppercase text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                placeholder="e.g. identity, founders, papal"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="notes" className="block font-heading font-bold uppercase text-ink">
-                Source Notes / Context
-              </label>
-              <textarea
-                id="notes"
-                name="notes"
-                rows={2}
-                maxLength={20000}
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                placeholder="Provenance or usage instructions"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full border-2 border-ink bg-ink py-2 font-heading text-xs font-bold uppercase tracking-widest text-cream hover:bg-rejection-red"
-            >
-              Add Entry
-            </button>
-          </form>
-        </div>
+        <CreateCanonForm />
       </div>
     </div>
   );

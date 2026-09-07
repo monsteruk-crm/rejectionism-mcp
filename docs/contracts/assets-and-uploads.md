@@ -43,9 +43,9 @@ Visual assets in CampaignOS follow a three-tier append-only model:
 
 ## 3. Capability Upload Lifecycle
 
-1. **Link Creation (`createUploadRequest`)**:
-   - Generates 32 random bytes, base64url-encoded without padding (43 characters).
-   - Only lowercase SHA-256 hash is persisted in `UploadRequest.tokenHash`. The raw token is returned once to the creator and never stored or recoverable.
+1. **Link & Session Creation (`createUploadRequest` / `createAdminUploadSession`)**:
+   - `purpose: CONTRIBUTOR`: generates random 32 bytes base64url token, persists SHA-256 hash in `UploadRequest.tokenHash`, and returns the capability URL once.
+   - `purpose: ADMIN_INTERNAL`: has fixed 24-hour expiration, max 50 items, generates no capability URL, and authenticates via admin session cookies and `X-CampaignOS-Upload-Request-Id`.
    - Captures `targetAssetVersion` at creation time if targeting an asset or revision.
    - Bounded parameters: `expiresInDays` (1..30, default 7), `maxItems` (1..50, default 20).
 
@@ -56,13 +56,14 @@ Visual assets in CampaignOS follow a three-tier append-only model:
    - Otherwise $\rightarrow$ `OPEN`
    - Mutations (prepare, authorize, verify, finalize) are only accepted when effective status is `OPEN`.
 
-3. **Direct-to-Storage Transfer**:
+3. **Direct-to-Storage Transfer & Status**:
+   - `GET /api/uploads/status`: Rehydrates reservation states and retrieves receipts without tokens in query params.
    - `POST /api/uploads/prepare`: Reserves an immutable `UploadFile` record with server-generated pathname `campaignos/uploads/<requestId>/<fileId>.<ext>`. Streamed body capped at 16 KB.
-   - `POST /api/uploads/blob`: Vercel Blob client upload bridge (`handleUpload`). `onBeforeGenerateToken` validates the capability token and increments `authorizationCount` (max 3 authorizations per slot).
+   - `POST /api/uploads/blob`: Vercel Blob client upload bridge (`handleUpload`). `onBeforeGenerateToken` validates capability token or admin session and consumes an authorization slot (max 3 authorizations per slot). `onUploadCompleted` triggers idempotent server-side byte inspection.
    - `POST /api/uploads/verify`: Server-side inspection verifying byte size, MIME type, dimensions, and SVG XML.
    - `POST /api/uploads/finalize`: Atomic finalization transaction locking the request row, verifying all files, CAS updating parent assets, appending revisions/representations, recording audit activity, and persisting a deterministic submission receipt. Streamed body capped at 2 MB.
    - **Replay Safety**: Exactly repeating a successful finalization request with identical payload hash returns the existing receipt without duplicate mutations.
-   - The contributor UI retains one submission key across finalization retries until it receives that receipt, including when a successful commit's response is lost.
+   - The UI retains one submission key across finalization retries until it receives that receipt.
 
 ---
 

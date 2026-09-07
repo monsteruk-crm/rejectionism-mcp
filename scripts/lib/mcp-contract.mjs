@@ -1,0 +1,60 @@
+/**
+ * Authoritative 47-tool CampaignOS MCP tool inventory and annotations.
+ */
+export const EXPECTED_MCP_TOOLS = [
+  "echo",
+  "check_database",
+  "campaign_get_status",
+  "campaign_activity_feed",
+  "campaign_list_work_items",
+  "campaign_get_work_item",
+  "campaign_create_work_item",
+  "campaign_update_work_item",
+  "campaign_get_canon",
+  "campaign_create_canon",
+  "campaign_update_canon",
+  "campaign_list_decisions",
+  "campaign_get_decision",
+  "campaign_record_decision",
+  "campaign_list_assets",
+  "campaign_get_asset",
+  "campaign_create_asset",
+  "campaign_update_asset",
+  "campaign_add_external_asset",
+  "campaign_create_asset_revision",
+  "campaign_add_asset_representation",
+  "campaign_set_primary_asset_representation",
+  "campaign_register_asset",
+  "campaign_create_upload_link",
+  "campaign_list_upload_links",
+  "campaign_get_upload_link",
+  "campaign_revoke_upload_link",
+  "campaign_regenerate_upload_link",
+  "campaign_list_websites",
+  "campaign_get_website",
+  "campaign_create_website",
+  "campaign_update_website",
+  "campaign_list_content",
+  "campaign_get_content",
+  "campaign_create_content",
+  "campaign_update_content",
+  "campaign_list_contacts",
+  "campaign_get_contact",
+  "campaign_create_contact",
+  "campaign_update_contact",
+  "campaign_list_tags",
+  "campaign_tag_entity",
+  "campaign_untag_entity",
+  "campaign_get_relationships",
+  "campaign_link_entities",
+  "campaign_unlink_entities",
+  "campaign_search",
+];
+
+export const CANONICAL_SERVER_INFO = {
+  name: "rejectionism-campaign-os",
+  version: "1.0.0",
+};
+
+export const CANONICAL_INSTRUCTIONS =
+  "CampaignOS is the authoritative operational record for Rejectionism. Read current data before proposing changes. Never report an operation as successful unless the tool confirms it. Preserve superseded decisions rather than deleting them. Require evidence before completing work. 'World domination' means cultural reach and participation, never coercion or illegal activity.";

@@ -15,7 +15,7 @@ All tool arguments use strict Zod validation. Unknown fields are rejected.
 
 ### Operational Status & Activity (2 Tools)
 3. **`campaign_get_status`**: Operational overview (status counts, in-progress, blocked, top 3 next, missing assets, websites, decisions, activity). Read-only `(true, true, false, true)`.
-4. **`campaign_activity_feed`**: Auditable event log (`{ entityType?, entityId?, limit? }`). Read-only `(true, true, false, true)`.
+4. **`campaign_activity_feed`**: Auditable event log (`{ entityType?, entityId?, limit?, offset? }`). Read-only `(true, true, false, true)`. Ordered by `createdAt desc, id desc`.
 
 ### Work Items (4 Tools)
 5. **`campaign_list_work_items`**: List/filter work items by status, minPriority, dueBefore, search. Read-only `(true, true, false, true)`.
@@ -45,10 +45,10 @@ All tool arguments use strict Zod validation. Unknown fields are rejected.
 23. **`campaign_register_asset`**: Legacy compatibility registration / update tool. Write `(false, false, false, true)`.
 
 ### Upload Links & Capability Ingestion (5 Tools)
-24. **`campaign_create_upload_link`**: Create single-submission upload request returning raw URL once (`{ title, instructions?, expiresInDays?, maxItems?, targetAssetId?, targetRevisionId? }`). Write `(false, false, false, true)`.
-25. **`campaign_list_upload_links`**: List upload links by effective status (`OPEN`, `SUBMITTED`, `REVOKED`, `EXPIRED`) or target (`{ status?, targetAssetId?, limit?, offset? }`). Read-only `(true, true, false, true)`.
-26. **`campaign_get_upload_link`**: Retrieve upload link details and reserved/uploaded files (`{ id }`). Read-only `(true, true, false, true)`.
-27. **`campaign_revoke_upload_link`**: Revoke open upload request (`{ id }`). Write `(false, true, true, true)`.
+24. **`campaign_create_upload_link`**: Create single-submission contributor upload request returning raw URL once (`{ title, instructions?, expiresInDays?, maxItems?, targetAssetId?, targetRevisionId? }`). Write `(false, false, false, true)`.
+25. **`campaign_list_upload_links`**: List contributor upload links by effective status (`OPEN`, `SUBMITTED`, `REVOKED`, `EXPIRED`) or target (`{ status?, targetAssetId?, limit?, offset? }`). Read-only `(true, true, false, true)`.
+26. **`campaign_get_upload_link`**: Retrieve contributor upload link details and reserved/uploaded files (`{ id }`). Read-only `(true, true, false, true)`.
+27. **`campaign_revoke_upload_link`**: Revoke open upload request (`{ id }`). Output `{ uploadRequest, changed: boolean }`. Idempotent repeat returns `changed: false` with zero Activity writes. Write `(false, true, true, true)`.
 28. **`campaign_regenerate_upload_link`**: Replace an open upload request with a fresh token, a seven-day expiry, and a current target snapshot (`{ id }`). Write `(false, false, true, true)`.
 
 ### Websites & Domains (4 Tools)

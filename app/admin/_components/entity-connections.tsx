@@ -9,6 +9,8 @@ import {
   unlinkEntitiesAction,
 } from "../entity-actions";
 import { FormFeedback } from "./form-feedback";
+import { EntityPicker } from "./entity-picker";
+import type { EntityLookupItem } from "@/lib/campaign/admin-lookups";
 import type { TagDto, OriginalEntityType, EntityRelationType } from "@/lib/campaign";
 
 export interface EntityConnectionsProps {
@@ -64,7 +66,19 @@ export function EntityConnections({
 
   // Link Form Modal/Accordion
   const [isLinkOpen, setIsLinkOpen] = useState(false);
+  const [relationType, setRelationType] = useState<EntityRelationType>("RELATES_TO");
   const [targetType, setTargetType] = useState<OriginalEntityType>("WORK_ITEM");
+  const [selectedTarget, setSelectedTarget] = useState<EntityLookupItem | null>(null);
+
+  const handleRelationTypeChange = (newType: EntityRelationType) => {
+    setRelationType(newType);
+    if (newType === "USES_ASSET") {
+      setTargetType("ASSET");
+      if (selectedTarget && selectedTarget.entityType !== "ASSET") {
+        setSelectedTarget(null);
+      }
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -174,6 +188,8 @@ export function EntityConnections({
               <form action={linkAction} className="space-y-3">
                 <input type="hidden" name="fromEntityType" value={entityType} />
                 <input type="hidden" name="fromEntityId" value={entityId} />
+                <input type="hidden" name="toEntityType" value={selectedTarget ? selectedTarget.entityType : targetType} />
+                <input type="hidden" name="toEntityId" value={selectedTarget ? selectedTarget.id : ""} />
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
@@ -183,7 +199,8 @@ export function EntityConnections({
                     <select
                       id="rel_type"
                       name="relationType"
-                      defaultValue="RELATES_TO"
+                      value={relationType}
+                      onChange={(e) => handleRelationTypeChange(e.target.value as EntityRelationType)}
                       className="mt-1 w-full border-2 border-ink bg-paper p-2 font-heading uppercase text-xs text-ink focus:outline-none"
                     >
                       {RELATION_TYPES.map((rt) => (
@@ -200,10 +217,16 @@ export function EntityConnections({
                     </label>
                     <select
                       id="to_entity_type"
-                      name="toEntityType"
-                      value={targetType}
-                      onChange={(e) => setTargetType(e.target.value as OriginalEntityType)}
-                      className="mt-1 w-full border-2 border-ink bg-paper p-2 font-heading uppercase text-xs text-ink focus:outline-none"
+                      disabled={relationType === "USES_ASSET"}
+                      value={relationType === "USES_ASSET" ? "ASSET" : targetType}
+                      onChange={(e) => {
+                        const newType = e.target.value as OriginalEntityType;
+                        setTargetType(newType);
+                        if (selectedTarget && selectedTarget.entityType !== newType) {
+                          setSelectedTarget(null);
+                        }
+                      }}
+                      className="mt-1 w-full border-2 border-ink bg-paper p-2 font-heading uppercase text-xs text-ink focus:outline-none disabled:opacity-50"
                     >
                       {ALL_ENTITY_TYPES.map((et) => (
                         <option key={et.value} value={et.value}>
@@ -214,27 +237,14 @@ export function EntityConnections({
                   </div>
                 </div>
 
-                <div>
-                  <label htmlFor="to_entity_id" className="block font-heading font-bold uppercase text-ink">
-                    Target Entity ID *
-                  </label>
-                  <input
-                    type="text"
-                    id="to_entity_id"
-                    name="toEntityId"
-                    required
-                    maxLength={100}
-                    placeholder="Enter target entity ID..."
-                    className="mt-1 w-full border-2 border-ink bg-paper p-2 font-mono text-xs text-ink focus:outline-none"
-                  />
-                  <p className="mt-1 text-[11px] text-ink/60">
-                    Tip: Use{" "}
-                    <Link href="/admin/search" target="_blank" className="text-rejection-red underline">
-                      Global Search
-                    </Link>{" "}
-                    to find any entity ID.
-                  </p>
-                </div>
+                <EntityPicker
+                  label="Search & Select Target Record *"
+                  entityTypes={relationType === "USES_ASSET" ? ["ASSET"] : [targetType]}
+                  excludeEntityId={entityId}
+                  excludeEntityType={entityType}
+                  selectedItem={selectedTarget}
+                  onSelect={(item) => setSelectedTarget(item)}
+                />
 
                 <div>
                   <label htmlFor="rel_notes" className="block font-heading font-bold uppercase text-ink">
@@ -252,7 +262,7 @@ export function EntityConnections({
 
                 <button
                   type="submit"
-                  disabled={isLinkPending}
+                  disabled={isLinkPending || !selectedTarget}
                   className="border-2 border-ink bg-ink px-4 py-2 font-heading font-bold uppercase text-cream hover:bg-rejection-red disabled:opacity-50"
                 >
                   {isLinkPending ? "Linking..." : "Confirm Relationship"}

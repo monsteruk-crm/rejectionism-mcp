@@ -1,9 +1,15 @@
 import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
-import { authorizeUploadFileTransfer, loadUploadFileForCallback, verifyUploadFile } from "@/lib/campaign/upload-files";
+import {
+  authorizeUploadFileTransfer,
+  authorizeUploadFileTransferByRequestId,
+  loadUploadFileForCallback,
+  inspectAndVerifyUploadFile,
+} from "@/lib/campaign/upload-files";
 import { getTrustedOrigin, checkOrigin } from "@/lib/auth/origin";
 import { isRawUploadToken } from "@/lib/campaign/upload-tokens";
+import { SESSION_COOKIE_NAME, verifySessionToken } from "@/lib/auth/session";
 import {
   errorJsonResponse,
   parseBoundedJsonBody,
@@ -12,13 +18,7 @@ import {
 
 /**
  * POST /api/uploads/blob
- * Vercel Blob client direct upload bridge (upgrade plan section 5 and 6).
- *
- * - `onBeforeGenerateToken`: browser sends clientPayload = JSON.stringify({ uploadToken, fileId });
- *   validates capability token, origin, file ownership/state, and consumes an authorization slot.
- * - `onUploadCompleted`: provider SDK webhook with verified signature; validates server-owned path
- *   and triggers idempotent inspection.
- * Max body size: 32 KB.
+ * Vercel Blob client direct upload bridge.
  */
 
 const MAX_BLOB_BODY_BYTES = 32_768;
@@ -39,7 +39,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       body: parsed.data,
       request: req,
       onBeforeGenerateToken: async (pathname, clientPayload) => {
-        // Same-origin check for browser token generation
         const originHeader = req.headers.get("origin");
         if (checkOrigin(originHeader, "browser") !== "allowed") {
           throw new Error("Cross-origin token generation rejected.");
@@ -49,20 +48,33 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           throw new Error("Missing clientPayload.");
         }
 
-        let payload: { uploadToken?: string; fileId?: string };
+        let payload: { uploadToken?: string; requestId?: string; fileId?: string };
         try {
-          payload = JSON.parse(clientPayload) as { uploadToken?: string; fileId?: string };
+          payload = JSON.parse(clientPayload) as { uploadToken?: string; requestId?: string; fileId?: string };
         } catch {
           throw new Error("Invalid clientPayload JSON.");
         }
 
-        const uploadToken = payload.uploadToken;
         const fileId = payload.fileId;
-        if (!uploadToken || !isRawUploadToken(uploadToken) || !fileId || typeof fileId !== "string") {
-          throw new Error("Invalid uploadToken or fileId in clientPayload.");
+        if (!fileId || typeof fileId !== "string") {
+          throw new Error("Invalid fileId in clientPayload.");
         }
 
-        const auth = await authorizeUploadFileTransfer(uploadToken, { fileId });
+        let auth;
+        if (payload.uploadToken && isRawUploadToken(payload.uploadToken)) {
+          auth = await authorizeUploadFileTransfer(payload.uploadToken, { fileId });
+        } else if (payload.requestId) {
+          const cookieHeader = req.headers.get("cookie") ?? "";
+          const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${SESSION_COOKIE_NAME}=([^;]+)`));
+          const sessionCookie = match ? match[1] : undefined;
+          if (!sessionCookie || !verifySessionToken(sessionCookie).valid) {
+            throw new Error("Admin session required for internal upload.");
+          }
+          auth = await authorizeUploadFileTransferByRequestId(payload.requestId, { fileId });
+        } else {
+          throw new Error("Missing valid uploadToken or requestId in clientPayload.");
+        }
+
         if (!auth.ok) {
           throw new Error(auth.error.message);
         }
@@ -112,7 +124,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           return;
         }
 
-        // Inspection is idempotent; browser verify also triggers it.
+        // Idempotently inspect and verify uploaded bytes
+        await inspectAndVerifyUploadFile(loaded.data.requestId, loaded.data.fileId);
       },
     });
 

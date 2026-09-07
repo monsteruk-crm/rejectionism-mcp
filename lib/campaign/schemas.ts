@@ -585,7 +585,12 @@ export type ListContentItemsQuery = z.infer<typeof ListContentItemsQuerySchema>;
 export const ListActivityQuerySchema = z
   .object({
     entityType: EntityTypeSchema.optional(),
+    entityId: z.string().trim().min(1).max(100).optional(),
     limit: z.coerce.number().int().min(1).max(100).default(20),
+    offset: z.coerce.number().int().min(0).max(10000).default(0),
   })
-  .strict();
+  .strict()
+  .refine((q) => !(q.entityId && !q.entityType), {
+    message: "entityId requires entityType to be specified.",
+  });
 export type ListActivityQuery = z.infer<typeof ListActivityQuerySchema>;

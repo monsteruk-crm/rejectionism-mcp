@@ -97,18 +97,10 @@ export interface UploadFileInspectionResult {
   failureCode?: UploadFileFailureCode;
 }
 
-/**
- * Reserves one immutable UploadFile slot for a valid OPEN request. The raw
- * capability token authorizes the call; the token itself is never persisted.
- */
-export async function reserveUploadFile(
-  rawToken: string,
+export async function reserveUploadFileByRequestId(
+  requestId: string,
   rawInput: unknown,
 ): Promise<ServiceResult<ReserveUploadFileResult>> {
-  if (!isRawUploadToken(rawToken)) {
-    return fail("VALIDATION_ERROR", "Malformed upload capability token.");
-  }
-
   const parsed = ReserveUploadFileInputSchema.safeParse(rawInput);
   if (!parsed.success) {
     return handleServiceError(parsed.error);
@@ -122,11 +114,12 @@ export async function reserveUploadFile(
 
   try {
     const prisma = getPrisma();
-    const tokenHash = await hashUploadToken(rawToken);
 
     const reserved = await prisma.$transaction(
       async (tx) => {
-        const locked = await lockUploadRequestByHash(tx, tokenHash);
+        const locked = await tx.uploadRequest.findUnique({
+          where: { id: requestId },
+        });
         if (!locked) {
           throw new Error("NOT_FOUND");
         }
@@ -157,8 +150,6 @@ export async function reserveUploadFile(
         }
 
         if (existing) {
-          // The same clientItemId with the same metadata returns the same
-          // fileId/path; different metadata for that ID is invalid.
           if (
             existing.sourceFilename === sanitizedFilename &&
             existing.declaredMimeType === declaredMimeType &&
@@ -176,8 +167,6 @@ export async function reserveUploadFile(
           throw new Error("RESERVATION_IMMUTABLE");
         }
 
-        // Lifetime budgets count all historical slots, including
-        // rejected/discarded ones, so retries cannot reset them.
         const slotCount = await tx.uploadFile.count({
           where: { uploadRequestId: locked.id },
         });
@@ -203,7 +192,6 @@ export async function reserveUploadFile(
             sourceFilename: sanitizedFilename,
             declaredMimeType,
             expectedByteSize: BigInt(input.expectedByteSize),
-            // Placeholder replaced below; the final path contains the fileId.
             blobPathname: `campaignos/uploads/${locked.id}/${crypto.randomUUID()}.pending`,
           },
         });
@@ -233,19 +221,37 @@ export async function reserveUploadFile(
 }
 
 /**
- * Bounded authorization for one direct browser→Blob transfer (the service
- * behind the SDK's onBeforeGenerateToken callback). Locks request then file,
- * validates effective OPEN and file ownership/state/path, and atomically
- * consumes one of the three per-slot authorizations.
+ * Reserves one immutable UploadFile slot for a valid OPEN request. The raw
+ * capability token authorizes the call; the token itself is never persisted.
  */
-export async function authorizeUploadFileTransfer(
+export async function reserveUploadFile(
   rawToken: string,
-  input: { fileId: string },
-): Promise<ServiceResult<UploadAuthorizationResult>> {
+  rawInput: unknown,
+): Promise<ServiceResult<ReserveUploadFileResult>> {
   if (!isRawUploadToken(rawToken)) {
     return fail("VALIDATION_ERROR", "Malformed upload capability token.");
   }
 
+  try {
+    const prisma = getPrisma();
+    const tokenHash = await hashUploadToken(rawToken);
+    const request = await prisma.uploadRequest.findUnique({
+      where: { tokenHash },
+      select: { id: true },
+    });
+    if (!request) {
+      return fail("NOT_FOUND", "Upload request not found.");
+    }
+    return reserveUploadFileByRequestId(request.id, rawInput);
+  } catch (error) {
+    return mapUploadFileError(error);
+  }
+}
+
+export async function authorizeUploadFileTransferByRequestId(
+  requestId: string,
+  input: { fileId: string },
+): Promise<ServiceResult<UploadAuthorizationResult>> {
   const trustedOrigin = getTrustedOrigin();
   if (trustedOrigin === null) {
     return fail(
@@ -256,11 +262,12 @@ export async function authorizeUploadFileTransfer(
 
   try {
     const prisma = getPrisma();
-    const tokenHash = await hashUploadToken(rawToken);
 
     const result = await prisma.$transaction(
       async (tx) => {
-        const lockedRequest = await lockUploadRequestByHash(tx, tokenHash);
+        const lockedRequest = await tx.uploadRequest.findUnique({
+          where: { id: requestId },
+        });
         if (!lockedRequest) {
           throw new Error("NOT_FOUND");
         }
@@ -280,12 +287,10 @@ export async function authorizeUploadFileTransfer(
           where: { id: input.fileId },
         });
         if (!file || file.uploadRequestId !== lockedRequest.id) {
-          // Never disclose files owned by other requests.
           throw new Error("FILE_NOT_FOUND");
         }
 
         if (file.status === "VERIFIED") {
-          // The immutable path is occupied; re-upload is never authorized.
           throw new Error("UPLOAD_NOT_READY");
         }
         if (file.status === "REJECTED") {
@@ -311,8 +316,6 @@ export async function authorizeUploadFileTransfer(
           Math.min(now.getTime() + AUTHORIZATION_WINDOW_MS, lockedRequest.expiresAt.getTime()),
         );
 
-        // Atomic consume: the guard is re-checked in the update predicate so
-        // concurrent authorizations cannot exceed the cap.
         const updated = await tx.uploadFile.updateMany({
           where: {
             id: file.id,
@@ -345,6 +348,34 @@ export async function authorizeUploadFileTransfer(
     );
 
     return ok(result);
+  } catch (error) {
+    return mapUploadFileError(error);
+  }
+}
+
+/**
+ * Bounded authorization for one direct browser→Blob transfer (the service
+ * behind the SDK's onBeforeGenerateToken callback).
+ */
+export async function authorizeUploadFileTransfer(
+  rawToken: string,
+  input: { fileId: string },
+): Promise<ServiceResult<UploadAuthorizationResult>> {
+  if (!isRawUploadToken(rawToken)) {
+    return fail("VALIDATION_ERROR", "Malformed upload capability token.");
+  }
+
+  try {
+    const prisma = getPrisma();
+    const tokenHash = await hashUploadToken(rawToken);
+    const request = await prisma.uploadRequest.findUnique({
+      where: { tokenHash },
+      select: { id: true },
+    });
+    if (!request) {
+      return fail("NOT_FOUND", "Upload request not found.");
+    }
+    return authorizeUploadFileTransferByRequestId(request.id, input);
   } catch (error) {
     return mapUploadFileError(error);
   }
@@ -450,44 +481,54 @@ function inspectionResult(row: InspectionRow, mutated: boolean): UploadFileInspe
   return { fileId: row.file.id, status: row.file.status, mutated, retryable: false };
 }
 
-/**
- * Idempotent per-file inspection. Provider reads happen outside any database
- * transaction; the terminal write happens in a short transaction that
- * re-checks request state and file status so concurrent revoke/cleanup
- * cannot be undone. VERIFIED repeats are unchanged; ATTACHED repeats and
- * late callbacks perform no mutation; REJECTED/DISCARDED never become
- * VERIFIED.
- */
-export async function verifyUploadFile(
-  rawToken: string,
-  input: { fileId: string },
+export async function inspectAndVerifyUploadFile(
+  requestId: string,
+  fileId: string,
   options: { provider?: BlobStorageProvider } = {},
 ): Promise<ServiceResult<UploadFileInspectionResult>> {
-  if (!isRawUploadToken(rawToken)) {
-    return fail("VALIDATION_ERROR", "Malformed upload capability token.");
-  }
-
   const provider = options.provider ?? getStorageProvider();
 
   try {
     const prisma = getPrisma();
-    const tokenHash = await hashUploadToken(rawToken);
 
-    // Initial state read (no lock; provider I/O must stay outside tx).
-    const initial = await loadInspectionRow(tokenHash, input.fileId);
-    if (!initial) {
+    const file = await prisma.uploadFile.findFirst({
+      where: { id: fileId, uploadRequestId: requestId },
+      include: { uploadRequest: { select: { id: true, status: true, expiresAt: true } } },
+    });
+    if (!file) {
       return fail("NOT_FOUND", "Upload file not found for this request.");
     }
 
-    const effective = getEffectiveUploadRequestStatus(initial.request.status, initial.request.expiresAt);
-    if (effective !== "OPEN" || initial.file.status !== "PENDING") {
-      // Terminal request (late callback) or non-PENDING file: acknowledge
-      // the current state without mutation.
-      return ok(inspectionResult(initial, false));
+    const effective = getEffectiveUploadRequestStatus(
+      file.uploadRequest.status,
+      file.uploadRequest.expiresAt,
+    );
+
+    if (file.status === "VERIFIED") {
+      return ok({
+        fileId: file.id,
+        status: "VERIFIED",
+        mutated: false,
+        retryable: false,
+        mimeType: file.mimeType ?? undefined,
+        byteSize: file.byteSize !== null ? Number(file.byteSize) : undefined,
+        width: file.width,
+        height: file.height,
+      });
     }
 
-    // ---- Provider reads (outside any database transaction) ----
-    const head = await provider.head(initial.file.blobPathname);
+    if (effective !== "OPEN" || file.status !== "PENDING") {
+      return ok({
+        fileId: file.id,
+        status: file.status,
+        mutated: false,
+        retryable: false,
+        failureCode: file.failureCode as UploadFileFailureCode | undefined,
+      });
+    }
+
+    // Provider reads outside database transaction
+    const head = await provider.head(file.blobPathname);
 
     let failureCode: UploadFileFailureCode | null = null;
     let verifiedMimeType: string | null = null;
@@ -497,29 +538,33 @@ export async function verifyUploadFile(
     let blobUrl: string | null = null;
 
     if (head === null) {
-      // Missing Blob: not a completed file; stays PENDING for retry.
-      return ok({ ...inspectionResult(initial, false), status: "PENDING" as const, retryable: true });
+      return ok({
+        fileId: file.id,
+        status: "PENDING",
+        mutated: false,
+        retryable: true,
+      });
     }
 
     blobUrl = head.url ?? null;
 
-    if (head.size !== Number(initial.file.expectedByteSize)) {
+    if (head.size !== Number(file.expectedByteSize)) {
       failureCode = "SIZE_MISMATCH";
-    } else if (initial.file.declaredMimeType === "image/svg+xml") {
-      const bytes = await provider.readSmallFile(initial.file.blobPathname, MAX_SVG_BYTES);
+    } else if (file.declaredMimeType === "image/svg+xml") {
+      const bytes = await provider.readSmallFile(file.blobPathname, MAX_SVG_BYTES);
       const svg = validateSvgDocument(bytes);
       if (svg.ok) {
-        verifiedMimeType = initial.file.declaredMimeType;
+        verifiedMimeType = file.declaredMimeType;
         verifiedByteSize = head.size;
       } else {
         failureCode = "SVG_MALFORMED";
       }
     } else {
-      const prefix = await provider.readPrefix(initial.file.blobPathname, INSPECTION_PREFIX_BYTES);
+      const prefix = await provider.readPrefix(file.blobPathname, INSPECTION_PREFIX_BYTES);
       const detected = await detectMimeTypeFromBytes(prefix);
       if (detected === null || !isAllowedMimeType(detected)) {
         failureCode = "FORMAT_NOT_ALLOWED";
-      } else if (detected !== initial.file.declaredMimeType) {
+      } else if (detected !== file.declaredMimeType) {
         failureCode = "MIME_MISMATCH";
       } else {
         verifiedMimeType = detected;
@@ -543,12 +588,11 @@ export async function verifyUploadFile(
       }
     }
 
-    // ---- Short terminal write transaction ----
+    // Short terminal write transaction
     const result = await prisma.$transaction(
       async (tx) => {
-        // Re-check request state so a concurrent revoke/cleanup cannot be undone.
         const currentRequest = await tx.uploadRequest.findUnique({
-          where: { id: initial.request.id },
+          where: { id: requestId },
           select: { id: true, status: true, expiresAt: true },
         });
         if (!currentRequest) {
@@ -560,14 +604,13 @@ export async function verifyUploadFile(
         );
 
         const currentFile = await tx.uploadFile.findUnique({
-          where: { id: initial.file.id },
+          where: { id: file.id },
           select: { id: true, status: true },
         });
         if (!currentFile) {
           throw new Error("FILE_NOT_FOUND");
         }
 
-        // Non-PENDING or terminal request: acknowledge without mutation.
         if (currentEffective !== "OPEN" || currentFile.status !== "PENDING") {
           return { mutated: false, status: currentFile.status };
         }
@@ -599,7 +642,7 @@ export async function verifyUploadFile(
     );
 
     return ok({
-      fileId: initial.file.id,
+      fileId: file.id,
       status: result.status,
       mutated: result.mutated,
       retryable: false,
@@ -618,10 +661,36 @@ export async function verifyUploadFile(
       return fail("AUTH_NOT_CONFIGURED", error.message);
     }
     if (error instanceof StorageUnavailableError) {
-      // Transient provider failure: the file stays PENDING and the caller
-      // may retry; never labelled an invalid file.
       return fail("STORAGE_UNAVAILABLE", "Blob storage is temporarily unavailable; retry verification.");
     }
+    return mapUploadFileError(error);
+  }
+}
+
+/**
+ * Idempotent per-file inspection.
+ */
+export async function verifyUploadFile(
+  rawToken: string,
+  input: { fileId: string },
+  options: { provider?: BlobStorageProvider } = {},
+): Promise<ServiceResult<UploadFileInspectionResult>> {
+  if (!isRawUploadToken(rawToken)) {
+    return fail("VALIDATION_ERROR", "Malformed upload capability token.");
+  }
+
+  try {
+    const prisma = getPrisma();
+    const tokenHash = await hashUploadToken(rawToken);
+    const request = await prisma.uploadRequest.findUnique({
+      where: { tokenHash },
+      select: { id: true },
+    });
+    if (!request) {
+      return fail("NOT_FOUND", "Upload request not found.");
+    }
+    return inspectAndVerifyUploadFile(request.id, input.fileId, options);
+  } catch (error) {
     return mapUploadFileError(error);
   }
 }

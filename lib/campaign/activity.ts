@@ -32,28 +32,35 @@ export async function createActivityTx(tx: Prisma.TransactionClient, params: Cre
 
 export async function listActivity(
   rawQuery: unknown = {},
-): Promise<ServiceResult<{ items: unknown[]; total: number; limit: number }>> {
+): Promise<ServiceResult<{ items: unknown[]; total: number; limit: number; offset: number }>> {
   const parsed = ListActivityQuerySchema.safeParse(rawQuery);
   if (!parsed.success) {
     return handleServiceError(parsed.error);
   }
 
-  const { entityType, limit } = parsed.data;
+  const { entityType, entityId, limit, offset } = parsed.data;
 
   try {
     const prisma = getPrisma();
-    const where: Prisma.ActivityWhereInput = entityType ? { entityType } : {};
+    const where: Prisma.ActivityWhereInput = {};
+    if (entityType) {
+      where.entityType = entityType;
+    }
+    if (entityId) {
+      where.entityId = entityId;
+    }
 
     const [items, total] = await Promise.all([
       prisma.activity.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: limit,
+        skip: offset,
       }),
       prisma.activity.count({ where }),
     ]);
 
-    return ok({ items, total, limit });
+    return ok({ items, total, limit, offset });
   } catch (error) {
     return handleServiceError(error);
   }

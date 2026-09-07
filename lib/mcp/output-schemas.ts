@@ -397,4 +397,5 @@ export const ActivityFeedOutputSchema = z.object({
   items: z.array(z.record(z.string(), z.unknown())),
   total: z.number(),
   limit: z.number(),
+  offset: z.number(),
 });

@@ -1,0 +1,58 @@
+name: Functional Verification
+
+on:
+  push:
+    branches: [main, complete]
+  pull_request:
+    branches: [main, complete]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Code Quality & Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.21.1"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: "8.15.7"
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Prisma Schema
+        run: pnpm db:validate
+
+      - name: Generate Prisma Client
+        run: pnpm db:generate
+
+      - name: Type Check
+        run: pnpm type-check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Format Check
+        run: pnpm format:check
+
+      - name: Unit Tests
+        run: pnpm test
+
+      - name: Build Application
+        run: pnpm build
+        env:
+          MCP_PRISMA_DATABASE_URL: "postgresql://ci:dummy@localhost:5432/dummy"
+          CAMPAIGNOS_PASSWORD: "ci_dummy_password_for_build_step_12345678"
+          CAMPAIGNOS_BASE_URL: "http://localhost:3000"

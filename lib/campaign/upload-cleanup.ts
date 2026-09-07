@@ -30,6 +30,8 @@ export interface CleanupCandidate {
   blobPathname: string;
   requestStatus: "OPEN" | "SUBMITTED" | "REVOKED";
   fileStatus: "PENDING" | "VERIFIED" | "REJECTED" | "ATTACHED" | "DISCARDED";
+  expectedByteSize: number;
+  reason: string;
 }
 
 export interface DiscardOutcome {
@@ -47,59 +49,78 @@ export interface CleanupSummary {
   discardedCount: number;
   deletedCount: number;
   failedCount: number;
+  totalCandidateBytes: number;
 }
 
 /**
  * Selects cleanup candidates. Purely a read; no locks are taken.
  */
 export async function selectDiscardableUploadFiles(
-  options: { now?: Date; limit?: number } = {},
+  options: { now?: Date; limit?: number; requestId?: string } = {},
 ): Promise<CleanupCandidate[]> {
   const prisma = getPrisma();
   const now = options.now ?? new Date();
   const cutoff = new Date(now.getTime() - RETENTION_MS);
 
-  const files = await prisma.uploadFile.findMany({
-    where: {
-      deletedAt: null,
-      representation: { is: null },
-      OR: [
-        // Previously discarded with a failed/missed provider delete: retry.
-        { status: "DISCARDED" },
-        {
-          status: { in: ["PENDING", "VERIFIED", "REJECTED"] },
-          uploadRequest: {
-            OR: [
-              { status: "SUBMITTED", submittedAt: { lte: cutoff } },
-              { status: "REVOKED", revokedAt: { lte: cutoff } },
-              { status: "OPEN", expiresAt: { lte: cutoff } },
-            ],
-          },
-          // Latest authorization deadline (null falls back to createdAt)
-          // must also be at least 24 hours old.
+  const whereClause: any = {
+    deletedAt: null,
+    representation: { is: null },
+    OR: [
+      // Previously discarded with a failed/missed provider delete: retry.
+      { status: "DISCARDED" },
+      {
+        status: { in: ["PENDING", "VERIFIED", "REJECTED"] },
+        uploadRequest: {
           OR: [
-            { authorizationExpiresAt: { lte: cutoff } },
-            { authorizationExpiresAt: null, createdAt: { lte: cutoff } },
+            { status: "SUBMITTED", submittedAt: { lte: cutoff } },
+            { status: "REVOKED", revokedAt: { lte: cutoff } },
+            { status: "OPEN", expiresAt: { lte: cutoff } },
           ],
         },
-      ],
-    },
+        OR: [
+          { authorizationExpiresAt: { lte: cutoff } },
+          { authorizationExpiresAt: null, createdAt: { lte: cutoff } },
+        ],
+      },
+    ],
+  };
+
+  if (options.requestId) {
+    whereClause.uploadRequestId = options.requestId;
+  }
+
+  const files = await prisma.uploadFile.findMany({
+    where: whereClause,
     select: {
       id: true,
       blobPathname: true,
       status: true,
-      uploadRequest: { select: { status: true } },
+      expectedByteSize: true,
+      uploadRequest: { select: { status: true, expiresAt: true, submittedAt: true, revokedAt: true } },
     },
     orderBy: { createdAt: "asc" },
-    ...(options.limit !== undefined ? { take: options.limit } : {}),
+    take: options.limit ?? 100,
   });
 
-  return files.map((file) => ({
-    id: file.id,
-    blobPathname: file.blobPathname,
-    requestStatus: file.uploadRequest.status,
-    fileStatus: file.status,
-  }));
+  return files.map((file) => {
+    let reason = "expired_retention_elapsed";
+    if (file.status === "DISCARDED") {
+      reason = "retry_unconfirmed_provider_deletion";
+    } else if (file.uploadRequest.status === "REVOKED") {
+      reason = "revoked_request_aged";
+    } else if (file.uploadRequest.status === "SUBMITTED") {
+      reason = "submitted_unattached_aged";
+    }
+
+    return {
+      id: file.id,
+      blobPathname: file.blobPathname,
+      requestStatus: file.uploadRequest.status,
+      fileStatus: file.status,
+      expectedByteSize: Number(file.expectedByteSize),
+      reason,
+    };
+  });
 }
 
 /**
@@ -218,12 +239,18 @@ export async function discardUploadFile(
  * `apply: true` discards and deletes them.
  */
 export async function runUploadCleanup(
-  options: { apply?: boolean; provider?: BlobStorageProvider; limit?: number; now?: Date } = {},
+  options: { apply?: boolean; provider?: BlobStorageProvider; limit?: number; now?: Date; requestId?: string } = {},
 ): Promise<CleanupSummary> {
   const apply = options.apply ?? false;
   const provider = options.provider ?? getStorageProvider();
 
-  const candidates = await selectDiscardableUploadFiles({ limit: options.limit, now: options.now });
+  const candidates = await selectDiscardableUploadFiles({
+    limit: options.limit,
+    now: options.now,
+    requestId: options.requestId,
+  });
+
+  const totalCandidateBytes = candidates.reduce((sum, c) => sum + c.expectedByteSize, 0);
 
   if (!apply) {
     return {
@@ -232,6 +259,7 @@ export async function runUploadCleanup(
       discardedCount: 0,
       deletedCount: 0,
       failedCount: 0,
+      totalCandidateBytes,
     };
   }
 
@@ -253,7 +281,6 @@ export async function runUploadCleanup(
     } else if (result.error === "STORAGE_UNAVAILABLE") {
       failedCount += 1;
     }
-    // NOT_FOUND / FILE_ATTACHED: raced out of eligibility; not failures.
   }
 
   return {
@@ -262,5 +289,6 @@ export async function runUploadCleanup(
     discardedCount,
     deletedCount,
     failedCount,
+    totalCandidateBytes,
   };
 }

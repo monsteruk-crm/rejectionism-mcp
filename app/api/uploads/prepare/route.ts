@@ -1,8 +1,8 @@
 import "server-only";
 import { NextRequest, NextResponse } from "next/server";
-import { reserveUploadFile } from "@/lib/campaign/upload-files";
+import { reserveUploadFileByRequestId } from "@/lib/campaign/upload-files";
+import { authenticateUploadRequest } from "@/lib/uploads/upload-auth";
 import {
-  extractUploadCapability,
   parseBoundedJsonBody,
   serviceErrorResponse,
   UPLOAD_SECURITY_HEADERS,
@@ -10,14 +10,14 @@ import {
 
 /**
  * POST /api/uploads/prepare
- * Reserves an immutable UploadFile slot for a valid capability token.
+ * Reserves an immutable UploadFile slot for a valid capability token or internal admin session.
  * Max body size: 16 KB.
  */
 
 const MAX_PREPARE_BODY_BYTES = 16_384;
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const auth = extractUploadCapability(req);
+  const auth = await authenticateUploadRequest(req);
   if (!auth.ok) {
     return auth.response;
   }
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return parsed.response;
   }
 
-  const result = await reserveUploadFile(auth.token, parsed.data);
+  const result = await reserveUploadFileByRequestId(auth.requestId, parsed.data);
   if (!result.ok) {
     return serviceErrorResponse(result.error);
   }

@@ -4,8 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Rejectionism CampaignOS",
-  description:
-    "Operational headquarters for REJECTIONISM. Unauthenticated test system — do not store private or sensitive data.",
+  description: "Operational headquarters for REJECTIONISM CampaignOS.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

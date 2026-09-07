@@ -29,5 +29,12 @@ describe("Search Schemas & Helpers", () => {
     expect(escapeLikePattern("file_name")).toBe("file\\_name");
     expect(escapeLikePattern("back\\slash")).toBe("back\\\\slash");
     expect(escapeLikePattern("100%_pure\\clean")).toBe("100\\%\\_pure\\\\clean");
+    expect(escapeLikePattern("plain text without wildcards")).toBe("plain text without wildcards");
+    expect(escapeLikePattern("%")).toBe("\\%");
+    expect(escapeLikePattern("_")).toBe("\\_");
+  });
+
+  it("handles complex combinations of wildcard and special characters", () => {
+    expect(escapeLikePattern("%_\\%_\\")).toBe("\\%\\_\\\\\\%\\_\\\\");
   });
 });

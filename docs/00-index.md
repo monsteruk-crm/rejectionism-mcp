@@ -12,11 +12,13 @@ Read [agent rules](../AGENTS.md), [status](STATUS.md), and [project context](PRO
   - [ADR 0003: Single-Password Boundary Authentication with Stateless Signed Sessions](adr/0003-single-password-boundary-authentication.md)
   - [ADR 0004: Private Blob Storage, Asset Revisions, and Capability Upload Links](adr/0004-asset-storage-revisions-and-upload-links.md)
   - [ADR 0005: Polymorphic Entity Tags and Directed Relationships](adr/0005-polymorphic-entity-tags-and-relations.md)
+  - [ADR 0006: Internal Upload Sessions, Purpose Separation, and Shared Recovery](adr/0006-internal-upload-sessions-and-recovery.md)
 
 ## Runbooks & Operations
 
 - [Local development and verification](runbooks/local-development.md): Setup, Prisma CLI, migration, seeding, unit tests, and smoke testing.
 - [Asset storage and Blob cleanup](runbooks/asset-storage.md): Private Vercel Blob store provisioning, quotas, and abandoned upload cleanup CLI.
+- [Backup and disaster recovery](runbooks/backup-restore.md): PostgreSQL dump/restore procedures, Blob manifest verification, and disaster recovery.
 - [Manual acceptance and verification](runbooks/manual-acceptance.md): Step-by-step browser acceptance scenarios, MCP Inspector testing, upload capability flows, and release verification checklist.
 - [Vercel deployment and client integration](runbooks/vercel-deployment.md): Hosting configuration, environment variables, Codex, ChatGPT, and MCP Inspector setup.
 

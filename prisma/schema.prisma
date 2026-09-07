@@ -75,6 +75,11 @@ enum UploadRequestStatus {
   REVOKED
 }
 
+enum UploadRequestPurpose {
+  CONTRIBUTOR
+  ADMIN_INTERNAL
+}
+
 enum UploadFileStatus {
   PENDING
   VERIFIED
@@ -261,32 +266,35 @@ model AssetRepresentation {
 }
 
 model UploadRequest {
-  id                     String              @id @default(cuid())
-  tokenHash              String              @unique @db.Char(64)
+  id                     String               @id @default(cuid())
+  tokenHash              String               @unique @db.Char(64)
+  purpose                UploadRequestPurpose @default(CONTRIBUTOR)
   title                  String
-  instructions           String              @default("")
-  status                 UploadRequestStatus @default(OPEN)
+  instructions           String               @default("")
+  status                 UploadRequestStatus  @default(OPEN)
   expiresAt              DateTime
-  maxItems               Int                 @default(20)
+  maxItems               Int                  @default(20)
   targetAssetId          String?
   targetRevisionId       String?
   targetAssetVersion     Int?
-  submissionKey          String?             @db.Uuid
-  submissionHash         String?             @db.Char(64)
+  submissionKey          String?              @db.Uuid
+  submissionHash         String?              @db.Char(64)
   submissionReceipt      Json?
-  createdAt              DateTime            @default(now())
+  createdAt              DateTime             @default(now())
   submittedAt            DateTime?
   revokedAt              DateTime?
-  replacesId             String?             @unique
-  targetAsset            Asset?              @relation("UploadTargetAsset", fields: [targetAssetId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  targetRevision         AssetRevision?      @relation(fields: [targetRevisionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  replaces               UploadRequest?      @relation("UploadReplacement", fields: [replacesId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  replacedBy             UploadRequest?      @relation("UploadReplacement")
+  replacesId             String?              @unique
+  targetAsset            Asset?               @relation("UploadTargetAsset", fields: [targetAssetId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  targetRevision         AssetRevision?       @relation(fields: [targetRevisionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  replaces               UploadRequest?       @relation("UploadReplacement", fields: [replacesId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  replacedBy             UploadRequest?       @relation("UploadReplacement")
   files                  UploadFile[]
   representations        AssetRepresentation[]
 
   @@index([status, expiresAt])
   @@index([createdAt, id])
+  @@index([purpose, createdAt, id])
+  @@index([purpose, status, expiresAt])
   @@index([targetAssetId])
   @@index([targetRevisionId])
 }

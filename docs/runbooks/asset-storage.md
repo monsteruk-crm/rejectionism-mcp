@@ -45,22 +45,37 @@ CAMPAIGNOS_BASE_URL=http://localhost:3000
 
 ## 3. Abandoned & Orphan Upload Cleanup
 
-When contributors reserve file slots or upload files without finalizing the submission, the files remain in `PENDING` or `VERIFIED` state.
+When contributors or internal sessions reserve file slots or upload files without finalizing the submission, the files remain in `PENDING` or `VERIFIED` state.
 
-To clean up abandoned files older than a specified duration (e.g. 24 hours):
+To clean up abandoned files whose retention deadline has passed (at least 24 hours old):
 
-### Dry Run (Default: inspect without deleting):
+### Dry Run (Default: inspect candidates without deleting):
 ```bash
-pnpm files:cleanup-uploads --hours=24
+# Default dry-run with limit 100
+pnpm files:cleanup-uploads -- --dry-run --limit 100
+
+# Scope dry-run to a specific request ID
+pnpm files:cleanup-uploads -- --dry-run --request-id <REQUEST_ID>
 ```
 
 ### Apply Deletion:
+Running with `--apply` requires explicit `--confirm-target <fingerprint>` to guard against targeting unintended databases:
+
 ```bash
-pnpm files:cleanup-uploads --hours=24 --apply
+# 1. Obtain database target fingerprint
+node -e '
+  import("./scripts/lib/test-target.mjs").then(m => {
+    console.log(m.computeDatabaseFingerprint(process.env.MCP_PRISMA_DATABASE_URL));
+  });
+'
+
+# 2. Execute deletion pass with confirmation
+pnpm files:cleanup-uploads -- --apply --confirm-target <DATABASE_FINGERPRINT> --limit 100
 ```
 
 The CLI script:
-1. Identifies `UploadFile` records that are `PENDING`, `VERIFIED`, or `REJECTED`, not linked to any `AssetRepresentation`, and created more than `--hours` ago.
-2. Deletes the physical files from private Vercel Blob storage.
-3. Updates `UploadFile.status = "DISCARDED"` and sets `deletedAt = now()`.
-4. Output prints file counts and freed byte totals only (never credentials or raw tokens).
+1. Identifies `UploadFile` records that are `PENDING`, `VERIFIED`, or `REJECTED`, unreferenced by any `AssetRepresentation`, and whose request status and authorization deadlines are both at least 24 hours old.
+2. Under a row lock, re-verifies eligibility before marking the row `DISCARDED`.
+3. Commits the transaction and deletes the physical files from private Vercel Blob storage.
+4. Marks `deletedAt = now()` upon successful provider deletion (or leaves `deletedAt = null` for retry if the provider fails).
+5. Output prints candidate IDs, status, expected byte counts, and totals (never credentials, URLs, or token hashes).
