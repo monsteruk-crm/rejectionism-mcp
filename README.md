@@ -11,13 +11,14 @@ The operational headquarters for **REJECTIONISM**, the satirical art movement bu
 - [Documentation Index](docs/00-index.md)
 - [Current Project Status](docs/STATUS.md)
 - [Project Architecture & Context](docs/PROJECT-CONTEXT.md)
-- [MCP Tools Contract (47 Tools)](docs/contracts/mcp-tools.md)
+- [MCP Tools Contract (55 Tools)](docs/contracts/mcp-tools.md)
 - [Assets and Uploads Contract](docs/contracts/assets-and-uploads.md)
 - [Asset Storage & Blob Runbook](docs/runbooks/asset-storage.md)
 - [Backup and Disaster Recovery Runbook](docs/runbooks/backup-restore.md)
 - [Local Development Runbook](docs/runbooks/local-development.md)
 - [Manual Acceptance Scenarios](docs/runbooks/manual-acceptance.md)
 - [Vercel Deployment Runbook](docs/runbooks/vercel-deployment.md)
+- [How Kommissar remembers (MCP memory usage)](docs/runbooks/mcp-usage.md)
 - [Architecture Decision Records (ADRs)](docs/adr/README.md)
 
 ---
@@ -32,11 +33,11 @@ CampaignOS exposes two primary interfaces powered by the same shared server-only
    - Asset Revisions & Representations management (`/admin/assets/[id]`) with primary representation switcher and external URL appends.
    - Single-use capability Upload Links management (`/admin/upload-links`) with one-time raw link display and regeneration.
    - Admin Bulk Ingestion (`/admin/assets/upload`) with grouping mode selection and direct multi-row Blob uploads.
-   - Global Search (`/admin/search`) across all 7 registers and polymorphic tag associations.
-   - Management screens for Work Items, Canon, Decisions, Websites, Content Pieces, and Contacts.
+   - Global Search (`/admin/search`) across all 8 registers and polymorphic tag associations.
+   - Management screens for Work Items, Canon, Decisions, Websites, Content Pieces, Contacts, and CampaignMemory (`/admin/memory`).
 
 2. **Remote MCP Server (`/api/mcp` and legacy `/mcp`)**:
-   - Stateless Model Context Protocol endpoint exposing 47 tools across all registers, diagnostics, uploads, relationships, tags, and search.
+   - Stateless Model Context Protocol endpoint exposing 55 tools across all registers, diagnostics, uploads, relationships, tags, search, and the durable cross-tool `CampaignMemory` (remember / update / supersede / archive / get / list / recall / get-context).
 
 3. **Public Upload Portal (`/upload/[token]`)**:
    - Capability-authorized, unauthenticated contributor submission page with real-time Blob uploads, server-side format/dimension verification, and atomic finalization.
@@ -93,6 +94,7 @@ Visit:
 - **Global Search**: `http://localhost:3000/admin/search`
 - **Asset Library**: `http://localhost:3000/admin/assets`
 - **Upload Links**: `http://localhost:3000/admin/upload-links`
+- **CampaignMemory**: `http://localhost:3000/admin/memory`
 - **Health Diagnostic**: `http://localhost:3000/api/health`
 - **MCP Endpoint**: `http://localhost:3000/api/mcp`
 

@@ -62,6 +62,35 @@ enum EntityType {
   UPLOAD_REQUEST
   TAG
   ENTITY_RELATION
+  CAMPAIGN_MEMORY
+}
+
+enum MemoryCategory {
+  PREFERENCE
+  CONTEXT
+  INSTRUCTION
+  LESSON
+  PERSON
+  PROJECT
+  STYLE
+  PROCESS
+  TECHNICAL
+  REFERENCE
+  OTHER
+}
+
+enum MemoryStatus {
+  ACTIVE
+  SUPERSEDED
+  ARCHIVED
+}
+
+enum MemorySourceType {
+  HUMAN
+  MCP
+  ADMIN
+  IMPORT
+  SYSTEM
 }
 
 enum AssetStorageType {
@@ -363,4 +392,44 @@ model EntityRelation {
   @@unique([fromEntityType, fromEntityId, toEntityType, toEntityId, relationType])
   @@index([fromEntityType, fromEntityId, createdAt])
   @@index([toEntityType, toEntityId, createdAt])
+}
+
+// CampaignOS persistent cross-tool memory (ADR 0007, brief section 2).
+// Stable keys are optional but unique across all non-null statuses. contentHash
+// uniqueness is enforced at the database boundary for ACTIVE rows only via an
+// authored SQL partial index; historical SUPERSEDED/ARCHIVED rows may share a
+// hash. Supersession is a single predecessor self-relation.
+model CampaignMemory {
+  id           String           @id @default(cuid())
+  key          String?          @unique
+  title        String
+  content      String
+  category     MemoryCategory
+  status       MemoryStatus     @default(ACTIVE)
+  importance   Int              @default(50)
+  confidence   Int              @default(100)
+  pinned       Boolean          @default(false)
+  sourceType   MemorySourceType
+  sourceLabel  String?
+  sourceUrl    String?
+  contentHash  String           @db.Char(64)
+  version      Int              @default(1)
+  accessCount  Int              @default(0)
+  lastAccessedAt DateTime?
+  expiresAt    DateTime?
+  supersedesId String?          @unique
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  supersedes   CampaignMemory?  @relation("CampaignMemorySupersession", fields: [supersedesId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  supersededBy CampaignMemory?  @relation("CampaignMemorySupersession")
+
+  @@index([category])
+  @@index([importance])
+  @@index([pinned])
+  @@index([updatedAt])
+  @@index([expiresAt])
+  @@index([contentHash])
+  @@index([status, expiresAt])
+  @@index([lastAccessedAt, id])
 }

@@ -12,3 +12,4 @@ This directory stores Architecture Decision Records for Rejectionism CampaignOS.
 | [0004](0004-asset-storage-revisions-and-upload-links.md) | Private Blob Storage, Asset Revisions, and Capability Upload Links | Accepted | 2026-09-06 |
 | [0005](0005-polymorphic-entity-tags-and-relations.md)   | Polymorphic Entity Tags and Directed Relationships               | Accepted | 2026-09-06 |
 | [0006](0006-internal-upload-sessions-and-recovery.md)   | Internal Upload Sessions, Purpose Separation, and Shared Recovery | Accepted | 2026-09-07 |
+| [0007](0007-campaignos-persistent-cross-tool-memory.md) | CampaignOS Persistent Cross-Tool Memory                             | Accepted | 2026-09-10 |

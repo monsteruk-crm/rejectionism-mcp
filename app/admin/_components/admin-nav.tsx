@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { label: "Websites", href: "/admin/websites" },
   { label: "Content", href: "/admin/content" },
   { label: "Contacts", href: "/admin/contacts" },
+  { label: "Memory", href: "/admin/memory" },
 ];
 
 export function AdminNav() {

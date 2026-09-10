@@ -2,10 +2,22 @@ import { z } from "zod";
 import {
   EntityIdSchema,
   EntityRefSchema,
-  OriginalEntityTypeSchema,
+  CampaignEntityTypeSchema,
   type EntityRef,
 } from "./tag-schemas";
-import { AssetNotesSchema } from "./asset-schemas";
+
+// Local copy of relation notes validation (browser-safe, no server-only chain):
+// identical trim behaviour and limits to AssetNotesSchema without importing the
+// asset-server-only barrel into client components.
+const MAX_NOTES = 20000;
+
+export const RelationNotesSchema = z
+  .string()
+  .trim()
+  .max(MAX_NOTES, `Must not exceed ${MAX_NOTES} characters.`)
+  .optional()
+  .nullable()
+  .transform((v) => (v === "" || v === undefined ? null : v));
 
 /**
  * Browser-safe schemas for directed relationships (upgrade plan section 4,
@@ -18,7 +30,7 @@ export type EntityRelationType = z.infer<typeof EntityRelationTypeSchema>;
 
 export const GetRelationshipsQuerySchema = z
   .object({
-    entityType: OriginalEntityTypeSchema,
+    entityType: CampaignEntityTypeSchema,
     entityId: EntityIdSchema,
     direction: z.enum(["incoming", "outgoing", "both"]).default("both"),
     relationType: EntityRelationTypeSchema.optional(),
@@ -32,7 +44,7 @@ export const LinkEntitiesInputSchema = z
     from: EntityRefSchema,
     to: EntityRefSchema,
     relationType: EntityRelationTypeSchema,
-    notes: AssetNotesSchema,
+    notes: RelationNotesSchema,
   })
   .strict();
 

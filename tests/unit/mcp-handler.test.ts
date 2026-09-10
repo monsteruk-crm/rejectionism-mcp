@@ -11,7 +11,7 @@ import {
 vi.mock("server-only", () => ({}));
 
 describe("lib/mcp/handler.ts & MCP Tool Registration", () => {
-  it("registers exactly 47 unique CampaignOS tools matching the contract fixture", () => {
+  it("registers exactly 55 unique CampaignOS tools matching the contract fixture", () => {
     const server = new McpServer(CANONICAL_SERVER_INFO, {
       instructions: CANONICAL_INSTRUCTIONS,
     });
@@ -22,8 +22,8 @@ describe("lib/mcp/handler.ts & MCP Tool Registration", () => {
     // Access registered tools from private/internal server structure
     const registeredTools = Object.keys((server as any)._registeredTools || {});
 
-    expect(registeredTools).toHaveLength(47);
-    expect(new Set(registeredTools).size).toBe(47);
+    expect(registeredTools).toHaveLength(EXPECTED_MCP_TOOLS.length);
+    expect(new Set(registeredTools).size).toBe(EXPECTED_MCP_TOOLS.length);
 
     const sortedRegistered = [...registeredTools].sort();
     const sortedExpected = [...EXPECTED_MCP_TOOLS].sort();

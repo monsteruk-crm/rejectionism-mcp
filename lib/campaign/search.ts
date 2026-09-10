@@ -7,7 +7,7 @@ import {
   SearchResultDto,
   SearchOutputDto,
 } from "./search-schemas";
-import { OriginalEntityType } from "./tag-schemas";
+import type { CampaignEntityType } from "./tag-schemas";
 import { Prisma } from "@/app/generated/prisma/client";
 
 /**
@@ -23,7 +23,7 @@ import { Prisma } from "@/app/generated/prisma/client";
  *   or exposed in snippets.
  */
 
-const ALL_ENTITY_TYPES: OriginalEntityType[] = [
+const ALL_ENTITY_TYPES: CampaignEntityType[] = [
   "WORK_ITEM",
   "CANON_ENTRY",
   "DECISION",
@@ -31,9 +31,10 @@ const ALL_ENTITY_TYPES: OriginalEntityType[] = [
   "WEBSITE",
   "CONTENT_ITEM",
   "CONTACT",
+  "CAMPAIGN_MEMORY",
 ];
 
-const ENTITY_TYPE_ORDER: Record<OriginalEntityType, number> = {
+const ENTITY_TYPE_ORDER: Record<CampaignEntityType, number> = {
   WORK_ITEM: 1,
   CANON_ENTRY: 2,
   DECISION: 3,
@@ -41,6 +42,7 @@ const ENTITY_TYPE_ORDER: Record<OriginalEntityType, number> = {
   WEBSITE: 5,
   CONTENT_ITEM: 6,
   CONTACT: 7,
+  CAMPAIGN_MEMORY: 8,
 };
 
 export function escapeLikePattern(input: string): string {
@@ -105,7 +107,7 @@ export async function searchCampaign(rawInput: unknown): Promise<ServiceResult<S
     const result = await prisma.$transaction(
       async (tx) => {
         // 1. Resolve tag filtering IDs if tags are requested
-        const requiredTagIdsByType = new Map<OriginalEntityType, Set<string>>();
+        const requiredTagIdsByType = new Map<CampaignEntityType, Set<string>>();
 
         if (deduplicatedTags && deduplicatedTags.length > 0) {
           const tagRows = await tx.tag.findMany({
@@ -150,7 +152,7 @@ export async function searchCampaign(rawInput: unknown): Promise<ServiceResult<S
         let grandTotal = 0;
 
         // Helper to get tag matches for an entity type
-        const getTagMatchedEntityIds = async (type: OriginalEntityType): Promise<Map<string, string[]>> => {
+        const getTagMatchedEntityIds = async (type: CampaignEntityType): Promise<Map<string, string[]>> => {
           const entityTagRows = await tx.entityTag.findMany({
             where: {
               entityType: type,

@@ -47,6 +47,15 @@ import {
   unlinkEntities,
   searchCampaign,
   listActivity,
+  rememberMemory,
+  updateMemory,
+  supersedeMemory,
+  archiveMemory,
+  getMemory,
+  listMemories,
+  recallMemories,
+  getCampaignContext,
+  getMemoryHealth,
 
   // Schemas
   NonEmptyString,
@@ -89,6 +98,14 @@ import {
   UnlinkEntitiesInputSchema,
   SearchQuerySchema,
   ListActivityQuerySchema,
+  RememberMemoryInputSchema,
+  UpdateMemoryInputSchema,
+  SupersedeMemoryInputSchema,
+  ArchiveMemoryInputSchema,
+  GetMemoryInputSchema,
+  ListMemoriesQuerySchema,
+  RecallMemoriesInputSchema,
+  GetContextInputSchema,
 } from "@/lib/campaign";
 
 import {
@@ -122,6 +139,15 @@ import {
   UnlinkEntitiesOutputSchema,
   SearchOutputSchema,
   ActivityFeedOutputSchema,
+  MemoryDtoSchema,
+  MemoryDetailDtoSchema,
+  ListMemoriesOutputSchema,
+  RememberMemoryOutputSchema,
+  UpdateMemoryOutputSchema,
+  SupersedeMemoryOutputSchema,
+  RecallOutputSchema,
+  CampaignContextOutputSchema,
+  MemoryHealthOutputSchema,
 } from "./output-schemas";
 
 import { toMcpToolResult } from "./tool-result";
@@ -1239,14 +1265,14 @@ export function registerCampaignTools(server: McpServer) {
   );
 
   // -----------------------------------------------------------
-  // 42. Global Search (47th Tool)
+  // 42. Global Search
   // -----------------------------------------------------------
   server.registerTool(
     "campaign_search",
     {
       title: "Search CampaignOS",
       description:
-        "Search across all seven CampaignOS registers (Work Items, Canon, Decisions, Assets, Websites, Content, Contacts) and tags using literal case-insensitive substring matching.",
+        "Search across all eight CampaignOS registers (Work Items, Canon, Decisions, Assets, Websites, Content, Contacts, Memories) and tags using literal case-insensitive substring matching.",
       inputSchema: SearchQuerySchema,
       outputSchema: SearchOutputSchema,
       annotations: {
@@ -1273,7 +1299,7 @@ export function registerCampaignTools(server: McpServer) {
     {
       title: "Get Activity Feed",
       description:
-        "Retrieve the auditable activity feed of recent changes across work items, canon, decisions, assets, websites, contacts, and content.",
+        "Retrieve the auditable activity feed of recent changes across work items, canon, decisions, assets, websites, contacts, content, and memories.",
       inputSchema: ListActivityQuerySchema,
       outputSchema: ActivityFeedOutputSchema,
       annotations: {
@@ -1288,6 +1314,216 @@ export function registerCampaignTools(server: McpServer) {
       return toMcpToolResult(
         res as any,
         (data: any) => `Retrieved ${data.items.length} recent activity entries.`,
+      );
+    },
+  );
+
+  // -----------------------------------------------------------
+  // 44-51. Persistent CampaignMemory (ADR 0007, brief sections 4/6/7/8/9)
+  // -----------------------------------------------------------
+  server.registerTool(
+    "campaign_remember",
+    {
+      title: "Remember Memory",
+      description:
+        "Persist a CampaignOS memory record. Detects duplicate or conflicting inputs via deterministic content hashing and stable-key ownership. Returns CREATED, DUPLICATE, ALREADY_CURRENT, or KEY_CONFLICT along with bounded nextActions. Does not invent or auto-merge authoritative knowledge.",
+      inputSchema: RememberMemoryInputSchema,
+      outputSchema: RememberMemoryOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    async (args) => {
+      const res = await rememberMemory(args, "mcp");
+      return toMcpToolResult((res as unknown) as Parameters<typeof toMcpToolResult>[0], (data: any) => {
+        switch (data.outcome) {
+          case "CREATED":
+            return `Memory created: "${data.memory.title}" (ID: ${data.memory.id}).`;
+          case "DUPLICATE":
+            return `Memory not created: identical content already exists (existing ID: ${data.memory.id}).`;
+          case "ALREADY_CURRENT":
+            return `Memory unchanged: existing record already has identical content (ID: ${data.memory.id}).`;
+          case "KEY_CONFLICT":
+            return `Memory not created: key owner has different content (existing ID: ${data.memory.id}). No rows changed.`;
+          default:
+            return `Memory operation completed with outcome ${data.outcome}.`;
+        }
+      });
+    },
+  );
+
+  server.registerTool(
+    "campaign_update_memory",
+    {
+      title: "Update Memory",
+      description:
+        "Update an ACTIVE memory's metadata, importance, confidence, pin, source label/URL, expiry, or content with optimistic concurrency (requires expectedVersion). Duplicate-content detection still applies.",
+      inputSchema: UpdateMemoryInputSchema,
+      outputSchema: UpdateMemoryOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
+    },
+    async (args) => {
+      const res = await updateMemory(args, "mcp");
+      return toMcpToolResult(
+        (res as unknown) as Parameters<typeof toMcpToolResult>[0],
+        (data: any) =>
+          `Memory updated: "${data.memory.title}" (Version: ${data.memory.version}, changed: ${data.changed}).`,
+      );
+    },
+  );
+
+  server.registerTool(
+    "campaign_supersede_memory",
+    {
+      title: "Supersede Memory",
+      description:
+        "Atomically replace an ACTIVE or ARCHIVED memory with a new ACTIVE memory. Optionally copies predecessor tags and directed relationships to the successor. Predecessor becomes SUPERSEDED and retains full history. Requires expectedVersion on the predecessor.",
+      inputSchema: SupersedeMemoryInputSchema,
+      outputSchema: SupersedeMemoryOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
+    },
+    async (args) => {
+      const res = await supersedeMemory(args, "mcp");
+      return toMcpToolResult(
+        (res as unknown) as Parameters<typeof toMcpToolResult>[0],
+        (data: any) =>
+          `Memory superseded: old "${data.supersededMemory.title}" replaced by new "${data.memory.title}" (Predecessor now SUPERSEDED).`,
+      );
+    },
+  );
+
+  server.registerTool(
+    "campaign_archive_memory",
+    {
+      title: "Archive Memory",
+      description:
+        "Mark an ACTIVE memory as ARCHIVED with optimistic concurrency. Historical record remains stored and searchable; excluded from normal recall. Does not hard-delete.",
+      inputSchema: ArchiveMemoryInputSchema,
+      outputSchema: UpdateMemoryOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    async (args) => {
+      const res = await archiveMemory(args, "mcp");
+      return toMcpToolResult(
+        (res as unknown) as Parameters<typeof toMcpToolResult>[0],
+        (data: any) =>
+          `Memory archived: "${data.memory.title}" (changed: ${data.changed}).`,
+      );
+    },
+  );
+
+  server.registerTool(
+    "campaign_get_memory",
+    {
+      title: "Get Memory",
+      description:
+        "Retrieve full details of a single memory by ID or stable key, including its tags, directed relationships, predecessor, successor, and bounded content/pagination. Tracking accessCount/lastAccessedAt is on by default; set trackAccess false to read for editing without bumping counters.",
+      inputSchema: GetMemoryInputSchema,
+      outputSchema: MemoryDetailDtoSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
+    },
+    async (args) => {
+      const res = await getMemory(args);
+      return toMcpToolResult(
+        (res as unknown) as Parameters<typeof toMcpToolResult>[0],
+        (data: any) =>
+          `Retrieved memory "${data.memory.title}" (Status: ${data.memory.status}, Version: ${data.memory.version}).`,
+      );
+    },
+  );
+
+  server.registerTool(
+    "campaign_list_memories",
+    {
+      title: "List Memories",
+      description:
+        "List memories with filters (search, category, status, pinned, single tag, min importance, expiry) and bounded pagination. Sort by recently updated, importance, recently accessed, oldest, or relevance (requires non-empty search).",
+      inputSchema: ListMemoriesQuerySchema,
+      outputSchema: ListMemoriesOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    async (args) => {
+      const res = await listMemories(args);
+      return toMcpToolResult(
+        (res as unknown) as Parameters<typeof toMcpToolResult>[0],
+        (data: any) => `Retrieved ${data.items.length} of ${data.total} memories.`,
+      );
+    },
+  );
+
+  server.registerTool(
+    "campaign_recall",
+    {
+      title: "Recall Memories",
+      description:
+        "Deterministic rank-based recall suitable for agent prompts at the start of substantial work. Combines exact-key, title, content, tag, and entity-context signals with bounded ambient pinned rows; returns relevanceScore and explicit relevanceReasons.",
+      inputSchema: RecallMemoriesInputSchema,
+      outputSchema: RecallOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
+    },
+    async (args) => {
+      const res = await recallMemories(args);
+      return toMcpToolResult(
+        (res as unknown) as Parameters<typeof toMcpToolResult>[0],
+        (data: any) => `Recalled ${data.items.length} of ${data.limit} requested memories.`,
+      );
+    },
+  );
+
+  server.registerTool(
+    "campaign_get_context",
+    {
+      title: "Get Compact Context Pack",
+      description:
+        "Read-only bootstrap that returns a compact context pack (Canon, current Decisions, relevant Memories, unfinished Work Items, non-superseded Assets, deterministic authority warnings) for a task string. Memory never replaces Canon.",
+      inputSchema: GetContextInputSchema,
+      outputSchema: CampaignContextOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
+    },
+    async (args) => {
+      const res = await getCampaignContext(args);
+      return toMcpToolResult(
+        (res as unknown) as Parameters<typeof toMcpToolResult>[0],
+        (data: any) =>
+          `Compiled context: ${data.canon.length} canon, ${data.recentDecisions.length} decisions, ${data.memories.length} memories, ${data.relatedWorkItems.length} work items, ${data.relatedAssets.length} assets, ${data.authorityWarnings.length} authority review notices.`,
       );
     },
   );

@@ -2,11 +2,11 @@ import "server-only";
 import { getPrisma } from "@/lib/prisma";
 import { ok, handleServiceError, ServiceResult } from "./results";
 import { entityHref } from "./entity-refs";
-import type { OriginalEntityType } from "./tag-schemas";
+import type { CampaignEntityType } from "./tag-schemas";
 
 export interface EntityLookupItem {
   id: string;
-  entityType: OriginalEntityType;
+  entityType: CampaignEntityType;
   title: string;
   href: string;
   version?: number;
@@ -37,7 +37,7 @@ export interface AssetRevisionLookupResult {
   offset: number;
 }
 
-const ALL_LOOKUP_TYPES: OriginalEntityType[] = [
+const ALL_LOOKUP_TYPES: CampaignEntityType[] = [
   "WORK_ITEM",
   "CANON_ENTRY",
   "DECISION",
@@ -45,11 +45,12 @@ const ALL_LOOKUP_TYPES: OriginalEntityType[] = [
   "WEBSITE",
   "CONTENT_ITEM",
   "CONTACT",
+  "CAMPAIGN_MEMORY",
 ];
 
 export async function lookupEntities(params: {
   query?: string;
-  entityTypes?: OriginalEntityType[];
+  entityTypes?: CampaignEntityType[];
   limit?: number;
   offset?: number;
 }): Promise<ServiceResult<EntityLookupResult>> {
@@ -268,6 +269,37 @@ export async function lookupEntities(params: {
             entityType: "CONTACT",
             title: r.organization ? `${r.name} (${r.organization})` : r.name,
             href: entityHref("CONTACT", r.id),
+            version: r.version,
+            status: r.status,
+          });
+        }
+      } else if (type === "CAMPAIGN_MEMORY") {
+        const where = query
+          ? {
+              OR: [
+                { title: { contains: query, mode: "insensitive" as const } },
+                { content: { contains: query, mode: "insensitive" as const } },
+                { key: { contains: query, mode: "insensitive" as const } },
+              ],
+            }
+          : {};
+        const [rows, count] = await Promise.all([
+          prisma.campaignMemory.findMany({
+            where,
+            select: { id: true, title: true, version: true, status: true, importance: true },
+            orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+            take: limit,
+            skip: offset,
+          }),
+          prisma.campaignMemory.count({ where }),
+        ]);
+        totalCount += count;
+        for (const r of rows) {
+          items.push({
+            id: r.id,
+            entityType: "CAMPAIGN_MEMORY",
+            title: r.title,
+            href: entityHref("CAMPAIGN_MEMORY", r.id),
             version: r.version,
             status: r.status,
           });

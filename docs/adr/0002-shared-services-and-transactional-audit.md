@@ -30,6 +30,10 @@ CampaignOS operations must be driven identically by two client interfaces: the `
 
 Generic tag membership (`EntityTag`) and directed relationships (`EntityRelation`) are independent set operations, not versioned entity mutations. They do not require `expectedVersion` and do not increment an entity `version`; they serialize through unique constraints plus idempotent add/remove, write no Activity on no-op repeats, and retry unique-conflict races outside the failed transaction. This scoped exception is specified in ADR 0005 and applies only to these two tables — every other mutation keeps expected-version concurrency.
 
+## Amendment (2026-09-10): Access Telemetry Exception
+
+CampaignMemory read access tracking (`accessCount`, `lastAccessedAt`) is updated by a best-effort, short-timeout parameterized raw UPDATE outside the read transaction; it does not increment `version`, change `updatedAt`, or write an `Activity` audit record. All semantic and metadata mutations of `CampaignMemory` remain fully subject to expected-version CAS and transactional audit logging (see ADR 0007).
+
 ## Implementation References
 
 - `lib/campaign/work-items.ts`

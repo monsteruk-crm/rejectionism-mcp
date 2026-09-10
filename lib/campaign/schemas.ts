@@ -145,8 +145,45 @@ export const EntityTypeSchema = z.enum([
   "UPLOAD_REQUEST",
   "TAG",
   "ENTITY_RELATION",
+  "CAMPAIGN_MEMORY",
 ]);
 export type EntityType = z.infer<typeof EntityTypeSchema>;
+
+export const MemoryCategorySchema = z.enum([
+  "PREFERENCE",
+  "CONTEXT",
+  "INSTRUCTION",
+  "LESSON",
+  "PERSON",
+  "PROJECT",
+  "STYLE",
+  "PROCESS",
+  "TECHNICAL",
+  "REFERENCE",
+  "OTHER",
+]);
+export type MemoryCategory = z.infer<typeof MemoryCategorySchema>;
+
+export const MemoryStatusSchema = z.enum(["ACTIVE", "SUPERSEDED", "ARCHIVED"]);
+export type MemoryStatus = z.infer<typeof MemoryStatusSchema>;
+
+export const MemorySourceTypeSchema = z.enum(["HUMAN", "MCP", "ADMIN", "IMPORT", "SYSTEM"]);
+export type MemorySourceType = z.infer<typeof MemorySourceTypeSchema>;
+
+export const MemorySourceTypeFilterSchema = z.enum(["ACTIVE", "SUPERSEDED", "ARCHIVED", "ALL"]);
+export type MemorySourceTypeFilter = z.infer<typeof MemorySourceTypeFilterSchema>;
+
+export const MemorySortSchema = z.enum([
+  "UPDATED_DESC",
+  "IMPORTANCE_DESC",
+  "ACCESSED_DESC",
+  "CREATED_ASC",
+  "RELEVANCE",
+]);
+export type MemorySort = z.infer<typeof MemorySortSchema>;
+
+export const MemoryWriteSourceSchema = z.enum(["admin", "mcp", "system"]);
+export type MemoryWriteSource = z.infer<typeof MemoryWriteSourceSchema>;
 
 export const MutationSourceSchema = z.enum([
   "admin",

@@ -7,7 +7,7 @@ All tool arguments use strict Zod validation. Unknown fields are rejected.
 
 ---
 
-## Complete Tool Inventory (47 Tools)
+## Complete Tool Inventory (55 Tools)
 
 ### Diagnostics (2 Tools)
 1. **`echo`**: Echo message back (`{ message: string(1..100) }`). Read-only `(true, true, false, false)`.
@@ -78,7 +78,17 @@ All tool arguments use strict Zod validation. Unknown fields are rejected.
 46. **`campaign_unlink_entities`**: Remove relationship (`{ relationId }`). Idempotent. Write `(false, true, true, true)`.
 
 ### Global Search (1 Tool)
-47. **`campaign_search`**: Search across all 7 registers and tag associations (`{ query, entityTypes?, tags?, limit?, offset? }`). Read-only `(true, true, false, true)`.
+47. **`campaign_search`**: Search across all 8 registers and tag associations (`{ query, entityTypes?, tags?, limit?, offset? }`). Read-only `(true, true, false, true)`.
+
+### Persistent Cross-Tool Memory (8 Tools, ADR 0007)
+48. **`campaign_remember`**: Persist a memory with duplicate-hash and key-conflict detection (`{ title, content, category, key?, importance?, confidence?, pinned?, sourceLabel?, sourceUrl?, expiresAt?, tags?, relationships? }`). Returns `CREATED`, `DUPLICATE`, `ALREADY_CURRENT`, or `KEY_CONFLICT`. Write `(false, false, true, true)`.
+49. **`campaign_update_memory`**: Update an ACTIVE memory with optimistic concurrency (`{ id, expectedVersion, changes }`). Write `(false, true, false, true)`.
+50. **`campaign_supersede_memory`**: Atomically supersede an ACTIVE or ARCHIVED memory with a new record (`{ supersedesId, expectedVersion, copyConnections?, newMemory }`). Write `(false, true, false, true)`.
+51. **`campaign_archive_memory`**: Mark an ACTIVE memory ARCHIVED with optimistic concurrency (`{ id, expectedVersion }`). Write `(false, true, true, true)`.
+52. **`campaign_get_memory`**: Retrieve memory by ID or key with tags, relationships, lineage, and access tracking (`{ id?, key?, trackAccess?, tagOffset?, relationshipOffset? }`). Non-read-only due to default access tracking `(false, false, false, true)`.
+53. **`campaign_list_memories`**: List memories with filters and pagination (`{ search?, category?, status?, pinned?, tag?, minImportance?, includeExpired?, expiredOnly?, sort?, limit?, offset? }`). Read-only `(true, false, true, true)`.
+54. **`campaign_recall`**: Deterministic rank-based recall with transparent scores and reasons (`{ query, categories?, tags?, entityContext?, limit?, includePinned?, includeExpired?, trackAccess? }`). Non-read-only due to default access tracking `(false, false, false, true)`.
+55. **`campaign_get_context`**: Read-only compact context bootstrap with authority order and deterministic review warnings (`{ task, entityContext?, maxMemories? }`). Strictly read-only, no telemetry `(true, false, true, true)`.
 
 ---
 

@@ -13,6 +13,7 @@ Read [agent rules](../AGENTS.md), [status](STATUS.md), and [project context](PRO
   - [ADR 0004: Private Blob Storage, Asset Revisions, and Capability Upload Links](adr/0004-asset-storage-revisions-and-upload-links.md)
   - [ADR 0005: Polymorphic Entity Tags and Directed Relationships](adr/0005-polymorphic-entity-tags-and-relations.md)
   - [ADR 0006: Internal Upload Sessions, Purpose Separation, and Shared Recovery](adr/0006-internal-upload-sessions-and-recovery.md)
+  - [ADR 0007: CampaignOS Persistent Cross-Tool Memory](adr/0007-campaignos-persistent-cross-tool-memory.md)
 
 ## Runbooks & Operations
 
@@ -21,6 +22,7 @@ Read [agent rules](../AGENTS.md), [status](STATUS.md), and [project context](PRO
 - [Backup and disaster recovery](runbooks/backup-restore.md): PostgreSQL dump/restore procedures, Blob manifest verification, and disaster recovery.
 - [Manual acceptance and verification](runbooks/manual-acceptance.md): Step-by-step browser acceptance scenarios, MCP Inspector testing, upload capability flows, and release verification checklist.
 - [Vercel deployment and client integration](runbooks/vercel-deployment.md): Hosting configuration, environment variables, Codex, ChatGPT, and MCP Inspector setup.
+- [How Kommissar remembers (MCP usage)](runbooks/mcp-usage.md): Human-facing exposition of CampaignOS Memory, authority order, and cross-tool context.
 
 ## Project Entry Points
 

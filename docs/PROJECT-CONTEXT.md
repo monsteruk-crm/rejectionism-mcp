@@ -25,10 +25,12 @@ Rejectionism CampaignOS provides a full campaign management platform with a remo
 ## Data & Mutation Flow
 
 1. **Web Admin**: Browser form submit → Server Action (`app/admin/actions.ts`) → Shared Service (`lib/campaign/`) → Prisma Interactive Transaction (`Entity updateMany({ where: { id, version } })` + `Activity.create`) → Page Revalidation (`revalidatePath`).
-2. **MCP Client**: MCP Request → Route Handler (`app/api/mcp/route.ts`) → Tool Adapter (`lib/mcp/campaign-tools.ts`) → Shared Service (`lib/campaign/`) → Prisma Interactive Transaction → MCP Response Helper (`toMcpToolResult`) → Structured JSON Content.
+- **MCP Client**: MCP Request → Route Handler (`app/api/mcp/route.ts`) → Tool Adapter (`lib/mcp/campaign-tools.ts`) → Shared Service (`lib/campaign/`) → Prisma Interactive Transaction → MCP Response Helper (`toMcpToolResult`) → Structured JSON Content. CampaignMemory tools additionally post a best-effort access telemetry write (`accessCount`/`lastAccessedAt`) after the read transaction completes; `campaign_get_context` is strictly read-only.
 
 Both channels share the exact same validation, concurrency checks, and transactional audit logging.
 
 Admin list routes pass URL filters through the shared strict schemas and render service validation or availability failures explicitly. Admin detail routes reserve 404 responses for `NOT_FOUND`; other service errors render an operational error state.
 
-See the [MCP tools contract](contracts/mcp-tools.md), [local development runbook](runbooks/local-development.md), and [ADRs](adr/README.md).
+3. **CampaignMemory** (ADR 0007): Both Admin Server Actions (`app/admin/memory/actions.ts`) and MCP memory tools share the same Pre-Advisory / Read-Only Decision orders (Canon wins over Memory). Backend services live in `lib/campaign/memory-schemas.ts`, `memory-hash.ts`, `memory-relevance.ts`, `memory-query.ts`, `memory-access.ts`, `memories.ts`, `tag-link-tx.ts`, and `context.ts`. Subscribe to the partial-unique index `CampaignMemory_active_content_hash_key` for immutable deduplication at the database boundary.
+
+See the [MCP tools contract](contracts/mcp-tools.md), [local development runbook](runbooks/local-development.md), [MCP usage runbook](runbooks/mcp-usage.md), and [ADRs](adr/README.md).

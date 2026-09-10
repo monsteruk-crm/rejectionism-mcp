@@ -1,9 +1,18 @@
 import { z } from "zod";
-import { TagSlugSchema, OriginalEntityTypeSchema, OriginalEntityType } from "./tag-schemas";
+import {
+  TagSlugSchema,
+  CampaignEntityTypeSchema,
+  type CampaignEntityType,
+} from "./tag-schemas";
+import { CAMPAIGN_ENTITY_TYPES } from "./tag-schemas";
 
 /**
  * Strict search input schema and DTO types (upgrade plan section 4 tool 42).
+ * CampaignMemory is part of global Admin/MCP search; the entity-type cap is
+ * derived from the authoritative selector tuple length.
  */
+
+const ENTITY_TYPE_CAP = CAMPAIGN_ENTITY_TYPES.length;
 
 export const SearchQuerySchema = z
   .object({
@@ -13,11 +22,11 @@ export const SearchQuerySchema = z
       .min(1, "Search query must not be empty.")
       .max(200, "Search query must not exceed 200 characters."),
     entityTypes: z
-      .array(OriginalEntityTypeSchema)
+      .array(CampaignEntityTypeSchema)
       .min(1)
-      .max(7)
+      .max(ENTITY_TYPE_CAP)
       .optional()
-      .transform((val) => (val ? ([...new Set(val)] as OriginalEntityType[]) : undefined)),
+      .transform((val) => (val ? ([...new Set(val)] as CampaignEntityType[]) : undefined)),
     tags: z
       .array(TagSlugSchema)
       .min(1)
@@ -32,7 +41,7 @@ export const SearchQuerySchema = z
 export type SearchQuery = z.infer<typeof SearchQuerySchema>;
 
 export interface SearchResultDto {
-  entityType: OriginalEntityType;
+  entityType: CampaignEntityType;
   id: string;
   title: string;
   snippet: string;

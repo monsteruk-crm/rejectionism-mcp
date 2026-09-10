@@ -58,10 +58,19 @@ holds Assets is, in order:
 1. `pnpm db:deploy` — applies the migration (also inserts revision 1 rows).
 2. `pnpm db:backfill-assets` — creates an EXTERNAL_URL representation on
    revision 1 for each Asset whose legacy URL passes validation. Idempotent:
-   the `legacyAssetId` marker skips already migrated rows, invalid URLs stay
-   untouched, and no Asset column, version, or timestamp is modified.
+   runs safely multiple times and ignores Assets already possessing a
+   primary representation.
 3. `pnpm db:seed` — seeds missing fixtures; existing Assets are never
    refreshed.
+
+### CampaignMemory Migrations
+
+Migrations `20260910100000_campaign_memory_entity_type` and
+`20260910100100_campaign_memory` are purely additive. They introduce the
+`CAMPAIGN_MEMORY` entity type, memory enums and table, numeric/hash/partial-unique
+constraints, and widen the generic tag/relation allowlists without altering
+existing records. `pnpm db:seed` deliberately does not seed speculative operational
+memories (ADR 0007).
 
 Run the sequence on an explicitly disposable development database first. For
 any shared or deployed database, the backfill is a separately authorized

@@ -33,6 +33,10 @@ The polymorphic endpoints (`entityType` + `entityId` strings) cannot carry datab
 - Negative: The database alone cannot prevent a membership row pointing at a nonexistent or out-of-scope entity; that guarantee lives in `lib/campaign/entity-refs.ts` and constraint 8 and must be preserved by any new writer. Deleting a domain entity would orphan its membership/relation rows, which is acceptable because domain entities are never hard-deleted.
 - Scoped exception: ADR 0002's "all mutations require expectedVersion" rule explicitly does not apply to `EntityTag`/`EntityRelation` membership changes.
 
+## Amendment (2026-09-10): Expansion to Eight Domain Targets
+
+Constraint 8 on `EntityTag` and `EntityRelation` was replaced in migration `20260910100100_campaign_memory` to permit `CAMPAIGN_MEMORY` as an eighth generic domain target alongside the original seven. Directed set semantics, self-relation prohibition, and immutable relation notes are preserved (see ADR 0007).
+
 ## Implementation References
 
 - `prisma/schema.prisma` (`Tag`, `EntityTag`, `EntityRelation`)

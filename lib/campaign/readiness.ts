@@ -32,6 +32,7 @@ const REQUIRED_TABLES = [
   "Tag",
   "EntityTag",
   "EntityRelation",
+  "CampaignMemory",
 ];
 
 const BASELINE_MIGRATIONS = [
@@ -39,6 +40,9 @@ const BASELINE_MIGRATIONS = [
   "20260905144500_campaign_os",
   "20260906090000_assets_and_upload_requests",
   "20260906091000_entity_tags_and_relations",
+  "20260907130000_upload_request_purpose",
+  "20260910100000_campaign_memory_entity_type",
+  "20260910100100_campaign_memory",
 ];
 
 export function computeUrlFingerprint(rawUrl: string | undefined): string | null {
