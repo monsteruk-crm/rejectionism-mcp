@@ -148,7 +148,9 @@ export async function lockUploadRequestByHash(
   tokenHash: string,
 ): Promise<UploadRequestRow | null> {
   const locked = await tx.$queryRaw<Array<{ id: string }>>`
-    SELECT "id" FROM "UploadRequest" WHERE "tokenHash" = ${tokenHash} FOR UPDATE
+    SELECT "id" FROM "UploadRequest"
+    WHERE "tokenHash" = ${tokenHash} AND "purpose" = 'CONTRIBUTOR'
+    FOR UPDATE
   `;
   if (locked.length === 0) {
     return null;
@@ -265,6 +267,7 @@ export async function createUploadRequest(
         const request = await tx.uploadRequest.create({
           data: {
             tokenHash,
+            purpose: "CONTRIBUTOR",
             title: input.title,
             instructions: input.instructions,
             status: "OPEN",
@@ -323,7 +326,7 @@ export async function listUploadRequests(
   try {
     const prisma = getPrisma();
     const now = new Date();
-    const where: Prisma.UploadRequestWhereInput = {};
+    const where: Prisma.UploadRequestWhereInput = { purpose: "CONTRIBUTOR" };
 
     if (targetAssetId) {
       where.targetAssetId = targetAssetId;
@@ -385,8 +388,8 @@ export async function getPublicUploadRequest(
     const prisma = getPrisma();
     const tokenHash = await hashUploadToken(rawToken);
 
-    const request = await prisma.uploadRequest.findUnique({
-      where: { tokenHash },
+    const request = await prisma.uploadRequest.findFirst({
+      where: { tokenHash, purpose: "CONTRIBUTOR" },
       select: {
         title: true,
         instructions: true,
@@ -450,8 +453,8 @@ export async function getUploadRequest(
 
   try {
     const prisma = getPrisma();
-    const request = await prisma.uploadRequest.findUnique({
-      where: { id: parsed.data.id },
+    const request = await prisma.uploadRequest.findFirst({
+      where: { id: parsed.data.id, purpose: "CONTRIBUTOR" },
       include: { files: { orderBy: { createdAt: "asc" } } },
     });
     if (!request) {
@@ -484,7 +487,7 @@ export async function revokeUploadRequest(
     const result = await prisma.$transaction(
       async (tx) => {
         const locked = await lockUploadRequestById(tx, input.id);
-        if (!locked) {
+        if (!locked || locked.purpose !== "CONTRIBUTOR") {
           throw new Error("NOT_FOUND");
         }
         if (locked.status === "SUBMITTED") {
@@ -555,7 +558,7 @@ export async function regenerateUploadRequest(
     const result = await prisma.$transaction(
       async (tx) => {
         const locked = await lockUploadRequestById(tx, input.id);
-        if (!locked) {
+        if (!locked || locked.purpose !== "CONTRIBUTOR") {
           throw new Error("NOT_FOUND");
         }
         if (locked.status === "SUBMITTED") {
@@ -586,6 +589,7 @@ export async function regenerateUploadRequest(
         const created = await tx.uploadRequest.create({
           data: {
             tokenHash,
+            purpose: "CONTRIBUTOR",
             title: locked.title,
             instructions: locked.instructions,
             status: "OPEN",

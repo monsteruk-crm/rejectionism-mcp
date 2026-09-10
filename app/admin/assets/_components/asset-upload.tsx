@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { UploadForm } from "@/app/upload/_components/upload-form";
 import type { PublicUploadRequestDto } from "@/lib/uploads/client-contract";
+import type { UploadFileStatusDto } from "@/lib/uploads/client-contract";
 import { createAdminUploadSessionAction } from "../upload/actions";
 import { EntityPicker } from "@/app/admin/_components/entity-picker";
 import type { EntityLookupItem, AssetRevisionLookupItem } from "@/lib/campaign/admin-lookups";
@@ -21,6 +22,7 @@ export function AdminAssetUpload({ initialRequestId }: { initialRequestId?: stri
   const [activeSession, setActiveSession] = useState<{
     requestId: string;
     requestDto: PublicUploadRequestDto;
+    files: UploadFileStatusDto[];
   } | null>(null);
 
   useEffect(() => {
@@ -56,6 +58,7 @@ export function AdminAssetUpload({ initialRequestId }: { initialRequestId?: stri
                 maxSubmissionBytes: 524_288_000,
                 submissionReceipt: data.receipt,
               },
+              files: data.files ?? [],
             });
           }
         })
@@ -122,6 +125,7 @@ export function AdminAssetUpload({ initialRequestId }: { initialRequestId?: stri
       setActiveSession({
         requestId: res.data.id,
         requestDto: publicDto,
+        files: [],
       });
     } catch (err) {
       setInitError(err instanceof Error ? err.message : "Failed to initialize session.");
@@ -159,6 +163,7 @@ export function AdminAssetUpload({ initialRequestId }: { initialRequestId?: stri
           requestId={activeSession.requestId}
           request={activeSession.requestDto}
           isAdminInternal={true}
+          initialServerFiles={activeSession.files}
         />
       </div>
     );

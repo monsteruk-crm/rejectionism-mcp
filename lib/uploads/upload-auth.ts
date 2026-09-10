@@ -25,9 +25,15 @@ export type UploadAuthOutcome = AuthorizedUploadContext | { ok: false; response:
  *
  * Enforces origin checks and rejects ambiguous simultaneous identifiers.
  */
-export async function authenticateUploadRequest(req: NextRequest): Promise<UploadAuthOutcome> {
+export async function authenticateUploadRequest(
+  req: NextRequest,
+  options: { allowMissingOrigin?: boolean } = {},
+): Promise<UploadAuthOutcome> {
   const originHeader = req.headers.get("origin");
-  const originOutcome = checkOrigin(originHeader, "browser");
+  const originOutcome =
+    originHeader === null && options.allowMissingOrigin
+      ? "allowed"
+      : checkOrigin(originHeader, "browser");
   if (originOutcome !== "allowed") {
     return {
       ok: false,

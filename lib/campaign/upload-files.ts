@@ -4,7 +4,12 @@ import { ok, fail, handleServiceError, ServiceResult } from "./results";
 import { BlobStorageProvider, StorageConfigurationError, StorageUnavailableError } from "./storage";
 import { getStorageProvider } from "../storage/vercel-blob";
 import { getTrustedOrigin } from "../auth/origin";
-import { lockUploadRequestByHash, getEffectiveUploadRequestStatus, mapUploadRequestError } from "./upload-requests";
+import {
+  lockUploadRequestByHash,
+  lockUploadRequestById,
+  getEffectiveUploadRequestStatus,
+  mapUploadRequestError,
+} from "./upload-requests";
 import { ReserveUploadFileInputSchema } from "./upload-schemas";
 import {
   canonicalExtensionForStoredMime,
@@ -117,9 +122,7 @@ export async function reserveUploadFileByRequestId(
 
     const reserved = await prisma.$transaction(
       async (tx) => {
-        const locked = await tx.uploadRequest.findUnique({
-          where: { id: requestId },
-        });
+        const locked = await lockUploadRequestById(tx, requestId);
         if (!locked) {
           throw new Error("NOT_FOUND");
         }
@@ -235,8 +238,8 @@ export async function reserveUploadFile(
   try {
     const prisma = getPrisma();
     const tokenHash = await hashUploadToken(rawToken);
-    const request = await prisma.uploadRequest.findUnique({
-      where: { tokenHash },
+    const request = await prisma.uploadRequest.findFirst({
+      where: { tokenHash, purpose: "CONTRIBUTOR" },
       select: { id: true },
     });
     if (!request) {
@@ -368,8 +371,8 @@ export async function authorizeUploadFileTransfer(
   try {
     const prisma = getPrisma();
     const tokenHash = await hashUploadToken(rawToken);
-    const request = await prisma.uploadRequest.findUnique({
-      where: { tokenHash },
+    const request = await prisma.uploadRequest.findFirst({
+      where: { tokenHash, purpose: "CONTRIBUTOR" },
       select: { id: true },
     });
     if (!request) {
@@ -444,8 +447,8 @@ async function loadInspectionRow(
   fileId: string,
 ): Promise<InspectionRow | null> {
   const client = getPrisma();
-  const request = await client.uploadRequest.findUnique({
-    where: { tokenHash },
+  const request = await client.uploadRequest.findFirst({
+    where: { tokenHash, purpose: "CONTRIBUTOR" },
     select: { id: true, status: true, expiresAt: true },
   });
   if (!request) {
@@ -682,8 +685,8 @@ export async function verifyUploadFile(
   try {
     const prisma = getPrisma();
     const tokenHash = await hashUploadToken(rawToken);
-    const request = await prisma.uploadRequest.findUnique({
-      where: { tokenHash },
+    const request = await prisma.uploadRequest.findFirst({
+      where: { tokenHash, purpose: "CONTRIBUTOR" },
       select: { id: true },
     });
     if (!request) {

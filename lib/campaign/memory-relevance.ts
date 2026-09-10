@@ -119,6 +119,13 @@ export interface MemoryCandidate {
   title: string;
   content: string;
   sourceLabel: string | null;
+  category: string;
+  status: "ACTIVE" | "SUPERSEDED" | "ARCHIVED";
+  confidence: number;
+  sourceType: "HUMAN" | "MCP" | "ADMIN" | "IMPORT" | "SYSTEM";
+  sourceUrl: string | null;
+  version: number;
+  expiresAt: Date | null;
   tagSlugs: string[];
   tagNames: string[];
   importance: number;

@@ -57,8 +57,9 @@ Visual assets in CampaignOS follow a three-tier append-only model:
    - Mutations (prepare, authorize, verify, finalize) are only accepted when effective status is `OPEN`.
 
 3. **Direct-to-Storage Transfer & Status**:
-   - `GET /api/uploads/status`: Rehydrates reservation states and retrieves receipts without tokens in query params.
+   - `GET /api/uploads/status`: Rehydrates reservation IDs/states and retrieves receipts without tokens in query params. Browser GETs may omit `Origin`; when supplied it must match the configured origin, and contributor capability or admin-session authentication is always required.
    - `POST /api/uploads/prepare`: Reserves an immutable `UploadFile` record with server-generated pathname `campaignos/uploads/<requestId>/<fileId>.<ext>`. Streamed body capped at 16 KB.
+   - Reservation checks lock the parent request row before reading lifetime slot and expected-byte aggregates, serializing concurrent prepares for the same request.
    - `POST /api/uploads/blob`: Vercel Blob client upload bridge (`handleUpload`). `onBeforeGenerateToken` validates capability token or admin session and consumes an authorization slot (max 3 authorizations per slot). `onUploadCompleted` triggers idempotent server-side byte inspection.
    - `POST /api/uploads/verify`: Server-side inspection verifying byte size, MIME type, dimensions, and SVG XML.
    - `POST /api/uploads/finalize`: Atomic finalization transaction locking the request row, verifying all files, CAS updating parent assets, appending revisions/representations, recording audit activity, and persisting a deterministic submission receipt. Streamed body capped at 2 MB.

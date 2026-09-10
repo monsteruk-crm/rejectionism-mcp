@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { upload } from "@vercel/blob/client";
+import Link from "next/link";
 import {
   ALLOWED_FORMATS_DISPLAY,
   ClientExternalUrlItem,
@@ -9,6 +10,7 @@ import {
   ClientUploadItem,
   mapMimeTypeFromExtension,
   PublicUploadRequestDto,
+  UploadFileStatusDto,
 } from "@/lib/uploads/client-contract";
 import { isAllowedMimeType } from "@/lib/uploads/file-policy";
 import { saveUploadDraft, loadUploadDraft, clearUploadDraft } from "@/lib/uploads/draft";
@@ -18,6 +20,7 @@ interface UploadFormProps {
   requestId?: string;
   request: PublicUploadRequestDto;
   isAdminInternal?: boolean;
+  initialServerFiles?: UploadFileStatusDto[];
 }
 
 const MAX_CONCURRENT_TRANSFERS = 3;
@@ -27,6 +30,7 @@ export function UploadForm({
   requestId: directRequestId,
   request,
   isAdminInternal = false,
+  initialServerFiles,
 }: UploadFormProps) {
   const [items, setItems] = useState<ClientUploadItem[]>([]);
   const [isSubmittingFinalize, setIsSubmittingFinalize] = useState(false);
@@ -50,13 +54,27 @@ export function UploadForm({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const submissionKeyRef = useRef<string | null>(null);
   const activeSessionKey = directRequestId || uploadToken || "upload_session";
+  const getAuthHeaders = useCallback((): Record<string, string> => {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (uploadToken) {
+      headers["Authorization"] = `Upload ${uploadToken}`;
+    } else if (directRequestId) {
+      headers["X-CampaignOS-Upload-Request-Id"] = directRequestId;
+    }
+    return headers;
+  }, [directRequestId, uploadToken]);
 
-  // Rehydrate draft from sessionStorage on mount
+  // Rehydrate non-secret form metadata locally, then merge authoritative
+  // reservation IDs and verification states from the server.
   useEffect(() => {
     if (completedReceipt) return;
     const draft = loadUploadDraft(activeSessionKey);
-    if (draft && draft.items.length > 0) {
-      const restoredItems: ClientUploadItem[] = draft.items.map((m) => {
+    const restore = (serverFiles: UploadFileStatusDto[]) => {
+      const draftItems = draft?.items ?? [];
+      const serverByClientId = new Map(serverFiles.map((file) => [file.clientItemId, file]));
+      const restoredItems: ClientUploadItem[] = draftItems.map((m) => {
         if (m.type === "EXTERNAL_URL") {
           return {
             clientItemId: m.clientItemId,
@@ -71,11 +89,13 @@ export function UploadForm({
             status: m.externalUrl ? "VERIFIED" : "IDLE",
           };
         }
+        const serverFile = serverByClientId.get(m.clientItemId);
+        if (serverFile) serverByClientId.delete(m.clientItemId);
         return {
           clientItemId: m.clientItemId,
           type: "FILE",
           file: null, // Binary bytes are never stored in session storage
-          fileId: null,
+          fileId: serverFile?.id ?? null,
           blobPathname: null,
           name: m.name,
           kind: m.kind,
@@ -83,16 +103,74 @@ export function UploadForm({
           label: m.label,
           variant: m.variant,
           format: m.format,
-          status: "IDLE",
-          uploadProgress: 0,
+          status:
+            serverFile?.status === "VERIFIED" || serverFile?.status === "ATTACHED"
+              ? "VERIFIED"
+              : serverFile?.status === "REJECTED"
+                ? "REJECTED"
+                : serverFile
+                  ? "ERROR"
+                  : "IDLE",
+          uploadProgress: serverFile?.status === "VERIFIED" ? 100 : 0,
+          verifiedMimeType: serverFile?.mimeType ?? undefined,
+          verifiedByteSize: serverFile?.byteSize ?? undefined,
+          failureCode: serverFile?.failureCode as ClientFileItem["failureCode"],
+          errorMessage:
+            serverFile?.status === "PENDING"
+              ? "Upload reservation recovered. Click Retry Verification."
+              : undefined,
         };
       });
+
+      for (const serverFile of serverByClientId.values()) {
+        const baseName = serverFile.sourceFilename.replace(/\.[^/.]+$/, "") || "Artwork";
+        restoredItems.push({
+          clientItemId: serverFile.clientItemId,
+          type: "FILE",
+          file: null,
+          fileId: serverFile.id,
+          blobPathname: null,
+          name: baseName,
+          kind: "artwork",
+          notes: "",
+          label: baseName,
+          variant: "",
+          format: serverFile.declaredMimeType,
+          status:
+            serverFile.status === "VERIFIED" || serverFile.status === "ATTACHED"
+              ? "VERIFIED"
+              : serverFile.status === "REJECTED"
+                ? "REJECTED"
+                : "ERROR",
+          uploadProgress: serverFile.status === "VERIFIED" ? 100 : 0,
+          verifiedMimeType: serverFile.mimeType ?? undefined,
+          verifiedByteSize: serverFile.byteSize ?? undefined,
+          failureCode: serverFile.failureCode as ClientFileItem["failureCode"],
+          errorMessage:
+            serverFile.status === "PENDING"
+              ? "Upload reservation recovered. Click Retry Verification."
+              : undefined,
+        });
+      }
       setItems(restoredItems);
-      if (draft.frozenSubmissionKey) {
+      if (draft?.frozenSubmissionKey) {
         submissionKeyRef.current = draft.frozenSubmissionKey;
       }
+    };
+
+    if (initialServerFiles) {
+      restore(initialServerFiles);
+      return;
     }
-  }, [activeSessionKey, completedReceipt]);
+
+    fetch("/api/uploads/status", { headers: getAuthHeaders() })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Unable to recover upload status.");
+        return response.json() as Promise<{ files?: UploadFileStatusDto[] }>;
+      })
+      .then((status) => restore(status.files ?? []))
+      .catch(() => restore([]));
+  }, [activeSessionKey, completedReceipt, getAuthHeaders, initialServerFiles]);
 
   // Save non-secret metadata to sessionStorage on change
   useEffect(() => {
@@ -115,18 +193,6 @@ export function UploadForm({
       updatedAt: Date.now(),
     });
   }, [items, activeSessionKey, completedReceipt]);
-
-  const getAuthHeaders = (): Record<string, string> => {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-    if (uploadToken) {
-      headers["Authorization"] = `Upload ${uploadToken}`;
-    } else if (directRequestId) {
-      headers["X-CampaignOS-Upload-Request-Id"] = directRequestId;
-    }
-    return headers;
-  };
 
   const updateItem = useCallback((clientItemId: string, updates: Partial<ClientUploadItem>) => {
     setItems((prev) =>
@@ -416,12 +482,12 @@ export function UploadForm({
 
         {isAdminInternal && (
           <div className="pt-2">
-            <a
+            <Link
               href="/admin/assets"
               className="inline-block border-2 border-ink bg-ink px-4 py-2 font-heading text-xs font-bold uppercase tracking-wider text-cream hover:bg-rejection-red"
             >
               &larr; Return to Asset Library
-            </a>
+            </Link>
           </div>
         )}
       </div>

@@ -9,7 +9,9 @@ import { serviceErrorResponse, UPLOAD_SECURITY_HEADERS } from "@/lib/uploads/cap
  * Retrieves request status, file reservations, and receipt without token query params.
  */
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const auth = await authenticateUploadRequest(req);
+  // Same-origin browser GET requests commonly omit Origin. Supplied origins
+  // are still checked, while authentication remains mandatory.
+  const auth = await authenticateUploadRequest(req, { allowMissingOrigin: true });
   if (!auth.ok) {
     return auth.response;
   }

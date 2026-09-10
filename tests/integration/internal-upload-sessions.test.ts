@@ -3,7 +3,10 @@ import {
   createAdminUploadSession,
   listAdminUploadSessions,
   cancelAdminUploadSession,
+  getUploadRequest,
   listUploadRequests,
+  regenerateUploadRequest,
+  revokeUploadRequest,
 } from "../../lib/campaign";
 
 describe("Internal Upload Sessions Integration", () => {
@@ -37,6 +40,24 @@ describe("Internal Upload Sessions Integration", () => {
         const found = internalList.data.items.some((i) => i.id === session.data.id);
         expect(found).toBe(true);
       }
+
+      const contributorList = await listUploadRequests({ limit: 100 });
+      expect(contributorList.ok).toBe(true);
+      if (contributorList.ok) {
+        expect(contributorList.data.items.some((i) => i.id === session.data.id)).toBe(false);
+      }
+      expect(await getUploadRequest({ id: session.data.id })).toMatchObject({
+        ok: false,
+        error: { code: "NOT_FOUND" },
+      });
+      expect(await revokeUploadRequest({ id: session.data.id })).toMatchObject({
+        ok: false,
+        error: { code: "NOT_FOUND" },
+      });
+      expect(await regenerateUploadRequest({ id: session.data.id })).toMatchObject({
+        ok: false,
+        error: { code: "NOT_FOUND" },
+      });
 
       // Cleanup session
       await cancelAdminUploadSession(session.data.id);

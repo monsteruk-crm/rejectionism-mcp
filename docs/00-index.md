@@ -4,7 +4,7 @@ Read [agent rules](../AGENTS.md), [status](STATUS.md), and [project context](PRO
 
 ## Contracts & Architecture
 
-- [MCP tools contract](contracts/mcp-tools.md): Arguments, results, error codes, and annotations for all 47 CampaignOS tools and bootstrap diagnostics.
+- [MCP tools contract](contracts/mcp-tools.md): Arguments, results, error codes, and annotations for all 55 CampaignOS tools and bootstrap diagnostics.
 - [Assets and uploads contract](contracts/assets-and-uploads.md): Hierarchy, file limits, capability token state machine, and private delivery.
 - [Architecture Decision Records (ADRs)](adr/README.md):
   - [ADR 0001: Temporary Unauthenticated Fail-Closed Test Mode](adr/0001-unauthenticated-test-mode.md)

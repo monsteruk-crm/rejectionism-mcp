@@ -649,6 +649,18 @@ export async function supersedeMemory(
           }));
         }
 
+        const predecessorUpdate = await tx.campaignMemory.updateMany({
+          where: { id: predecessor.id, version: predecessor.version },
+          data: {
+            status: "SUPERSEDED",
+            // A stable key belongs to the current row. Release it before the
+            // successor insert so the global unique index remains satisfied.
+            key: null,
+            version: predecessor.version + 1,
+          },
+        });
+        if (predecessorUpdate.count === 0) throw new Error("VERSION_CONFLICT");
+
         const created = await tx.campaignMemory.create({
           data: {
             key: transferredKey,
@@ -669,16 +681,6 @@ export async function supersedeMemory(
             supersedesId: predecessor.id,
           },
         });
-
-        const predecessorUpdate = await tx.campaignMemory.updateMany({
-          where: { id: predecessor.id, version: predecessor.version },
-          data: {
-            status: "SUPERSEDED",
-            key: transferredKey === predecessor.key ? predecessor.key : null,
-            version: predecessor.version + 1,
-          },
-        });
-        if (predecessorUpdate.count === 0) throw new Error("VERSION_CONFLICT");
 
         const newMemoryRef: EntityRef = { entityType: "CAMPAIGN_MEMORY", entityId: created.id };
 

@@ -135,8 +135,9 @@ All mutations use optimistic concurrency:
   metadata edits with version increment.
 - `updateMany({where:{id, version:expected, status:"ACTIVE"}})` followed
   by `status:"ARCHIVED"` for archive.
-- CAS-update predecessor with `version:expected` plus `status:"SUPERSEDED"`
-  for supersession; create the new row with `supersedesId` and
+- CAS-update predecessor with `version:expected`, `status:"SUPERSEDED"`, and
+  `key:null` before inserting the successor, transferring stable-key ownership
+  without violating the global key uniqueness constraint; create the new row with `supersedesId` and
   `version: 1`.
 - Unique-race retries (P2002, P2034) around the outermost transaction up
   to 3 attempts.

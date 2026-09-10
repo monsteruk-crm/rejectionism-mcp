@@ -667,8 +667,8 @@ export async function finalizeUploadRequest(
   try {
     const prisma = getPrisma();
     const tokenHash = await hashUploadToken(rawToken);
-    const request = await prisma.uploadRequest.findUnique({
-      where: { tokenHash },
+    const request = await prisma.uploadRequest.findFirst({
+      where: { tokenHash, purpose: "CONTRIBUTOR" },
       select: { id: true },
     });
     if (!request) {

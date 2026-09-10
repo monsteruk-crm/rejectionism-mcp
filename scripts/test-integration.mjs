@@ -9,7 +9,6 @@ try {
   assertDisposableTestTarget({
     testDatabaseUrl,
     operationalDatabaseUrl,
-    requireDisposableAck: false, // Harness checks inequality and presence; write acknowledgment is required when CAMPAIGNOS_TEST_DISPOSABLE is enforced
   });
 } catch (err) {
   console.error(`Integration test target check failed: ${err instanceof Error ? err.message : String(err)}`);
