@@ -4,6 +4,7 @@ import { AdminServiceError } from "../_components/service-error";
 import { listAssets, AssetStatus, AssetStorageType } from "@/lib/campaign";
 import { AssetCard } from "./_components/asset-card";
 import { CreateAssetPanel } from "./_components/create-asset-modals";
+import { Pagination } from "../_components/pagination";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export default async function AssetsListPage(props: {
     search?: string;
     storageType?: string;
     tags?: string;
+    offset?: string;
   }>;
 }) {
   await requireAdminPage();
@@ -25,6 +27,7 @@ export default async function AssetsListPage(props: {
   const tagsFilter = searchParams.tags
     ? searchParams.tags.split(",").map((t) => t.trim()).filter(Boolean)
     : undefined;
+  const offset = searchParams.offset ? Math.max(0, parseInt(searchParams.offset, 10) || 0) : 0;
 
   const result = await listAssets({
     status: statusFilter,
@@ -32,7 +35,8 @@ export default async function AssetsListPage(props: {
     search: searchFilter,
     storageType: storageTypeFilter,
     tags: tagsFilter,
-    limit: 100,
+    limit: 25,
+    offset,
   });
 
   const assets = result.ok ? result.data.items : [];
@@ -198,6 +202,18 @@ export default async function AssetsListPage(props: {
             {assets.map((asset) => (
               <AssetCard key={asset.id} asset={asset} />
             ))}
+          </div>
+        )}
+
+        {result.ok && (
+          <div className="mt-6">
+            <Pagination
+              total={total}
+              limit={25}
+              offset={offset}
+              basePath="/admin/assets"
+              searchParams={searchParams}
+            />
           </div>
         )}
       </div>

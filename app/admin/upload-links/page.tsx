@@ -4,20 +4,24 @@ import { AdminServiceError } from "../_components/service-error";
 import { listUploadRequests } from "@/lib/campaign";
 import { StatusBadge } from "../_components/badge";
 import { UploadRequestForm } from "./_components/upload-request-form";
+import { Pagination } from "../_components/pagination";
 
 export const dynamic = "force-dynamic";
 
 export default async function UploadLinksListPage(props: {
-  searchParams: Promise<{ status?: string; targetAssetId?: string }>;
+  searchParams: Promise<{ status?: string; targetAssetId?: string; offset?: string }>;
 }) {
   await requireAdminPage();
   const searchParams = await props.searchParams;
   const statusFilter = searchParams.status;
   const targetAssetIdFilter = searchParams.targetAssetId;
+  const offset = searchParams.offset ? Math.max(0, parseInt(searchParams.offset, 10) || 0) : 0;
 
   const result = await listUploadRequests({
-    status: statusFilter,
-    limit: 100,
+    status: statusFilter as any,
+    targetAssetId: targetAssetIdFilter,
+    limit: 25,
+    offset,
   });
 
   const requests = result.ok ? result.data.items : [];
@@ -154,6 +158,18 @@ export default async function UploadLinksListPage(props: {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {result.ok && (
+            <div className="mt-4 border-t border-ink/20 pt-4">
+              <Pagination
+                total={total}
+                limit={25}
+                offset={offset}
+                basePath="/admin/upload-links"
+                searchParams={searchParams}
+              />
             </div>
           )}
         </div>

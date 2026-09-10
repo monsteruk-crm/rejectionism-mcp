@@ -1,37 +1,17 @@
+import "./lib/environment.mjs";
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { assertDisposableTestTarget } from "./lib/test-target.mjs";
 
-// Plain node scripts do not load .env.local automatically, and an inherited
-// shell environment can carry stale DATABASE_URL values from unrelated
-// commands. Resolve both targets with identical shell-first precedence so the
-// safety comparison checks the exact values that child processes would use.
-function readEnvFileValue(key) {
-  const line = readFileSync(".env.local", "utf8")
-    .split(/\r?\n/)
-    .find((candidate) => candidate.startsWith(`${key}=`));
-  if (!line) {
-    return undefined;
-  }
-  return line
-    .slice(key.length + 1)
-    .trim()
-    .replace(/^"(.*)"$/, "$1");
-}
+const testDatabaseUrl = process.env.TEST_MCP_PRISMA_DATABASE_URL;
+const operationalDatabaseUrl = process.env.MCP_PRISMA_DATABASE_URL;
 
-const testDatabaseUrl =
-  process.env.TEST_MCP_PRISMA_DATABASE_URL || readEnvFileValue("TEST_MCP_PRISMA_DATABASE_URL");
-const operationalDatabaseUrl =
-  process.env.MCP_PRISMA_DATABASE_URL || readEnvFileValue("MCP_PRISMA_DATABASE_URL");
-
-if (!testDatabaseUrl) {
-  console.error("TEST_MCP_PRISMA_DATABASE_URL must identify a disposable PostgreSQL database.");
-  process.exit(1);
-}
-
-if (!operationalDatabaseUrl || testDatabaseUrl === operationalDatabaseUrl) {
-  console.error(
-    "TEST_MCP_PRISMA_DATABASE_URL must differ from the operational MCP_PRISMA_DATABASE_URL to protect non-test data.",
-  );
+try {
+  assertDisposableTestTarget({
+    testDatabaseUrl,
+    operationalDatabaseUrl,
+  });
+} catch (err) {
+  console.error(`Integration test target check failed: ${err instanceof Error ? err.message : String(err)}`);
   process.exit(1);
 }
 

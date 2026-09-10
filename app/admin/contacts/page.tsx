@@ -2,13 +2,19 @@ import { requireAdminPage } from "@/lib/auth/boundaries";
 import Link from "next/link";
 import { AdminServiceError } from "../_components/service-error";
 import { listContacts } from "@/lib/campaign";
-import { createContactAction } from "../actions";
+import { CreateContactForm } from "../_components/forms/contact-form";
+import { Pagination } from "../_components/pagination";
 
 export const dynamic = "force-dynamic";
 
-export default async function ContactsListPage() {
+export default async function ContactsListPage(props: {
+  searchParams: Promise<{ offset?: string }>;
+}) {
   await requireAdminPage();
-  const result = await listContacts({ includePrivateFields: true, limit: 100 });
+  const searchParams = await props.searchParams;
+  const offset = searchParams.offset ? Math.max(0, parseInt(searchParams.offset, 10) || 0) : 0;
+
+  const result = await listContacts({ includePrivateFields: true, limit: 25, offset });
   const contacts = result.ok ? result.data.items : [];
   const total = result.ok ? result.data.total : 0;
 
@@ -94,111 +100,22 @@ export default async function ContactsListPage() {
               </table>
             </div>
           )}
+
+          {result.ok && (
+            <div className="mt-4 border-t border-ink/20 pt-4">
+              <Pagination
+                total={total}
+                limit={25}
+                offset={offset}
+                basePath="/admin/contacts"
+                searchParams={searchParams}
+              />
+            </div>
+          )}
         </div>
 
         {/* Create Contact Form */}
-        <div className="border-2 border-ink bg-paper p-6 shadow-[4px_4px_0px_0px_rgba(13,13,13,1)]">
-          <h2 className="border-b-2 border-ink pb-2 font-heading text-xl font-black uppercase">
-            Add Contact
-          </h2>
-
-          <form action={createContactAction} className="mt-4 space-y-4 text-xs font-sans">
-            <div>
-              <label htmlFor="name" className="block font-heading font-bold uppercase text-ink">
-                Full Name *
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                required
-                maxLength={200}
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                placeholder="e.g. Sandra from HR"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label
-                  htmlFor="organization"
-                  className="block font-heading font-bold uppercase text-ink"
-                >
-                  Organization
-                </label>
-                <input
-                  type="text"
-                  id="organization"
-                  name="organization"
-                  maxLength={200}
-                  className="mt-1 w-full border-2 border-ink bg-cream p-2 text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="role" className="block font-heading font-bold uppercase text-ink">
-                  Role
-                </label>
-                <input
-                  type="text"
-                  id="role"
-                  name="role"
-                  maxLength={200}
-                  className="mt-1 w-full border-2 border-ink bg-cream p-2 text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="email" className="block font-heading font-bold uppercase text-ink">
-                Email (Optional)
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                maxLength={200}
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 font-mono text-xs text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                placeholder="contact@example.com"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="status" className="block font-heading font-bold uppercase text-ink">
-                Status
-              </label>
-              <input
-                type="text"
-                id="status"
-                name="status"
-                defaultValue="PROSPECT"
-                maxLength={200}
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 font-heading uppercase text-xs text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="notes" className="block font-heading font-bold uppercase text-ink">
-                Notes
-              </label>
-              <textarea
-                id="notes"
-                name="notes"
-                rows={3}
-                maxLength={20000}
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                placeholder="Collaboration context or public notes"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full border-2 border-ink bg-ink py-2 font-heading text-xs font-bold uppercase tracking-widest text-cream hover:bg-rejection-red"
-            >
-              Save Contact
-            </button>
-          </form>
-        </div>
+        <CreateContactForm />
       </div>
     </div>
   );

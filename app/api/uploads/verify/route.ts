@@ -1,9 +1,9 @@
 import "server-only";
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUploadFile } from "@/lib/campaign/upload-files";
+import { inspectAndVerifyUploadFile } from "@/lib/campaign/upload-files";
+import { authenticateUploadRequest } from "@/lib/uploads/upload-auth";
 import {
   errorJsonResponse,
-  extractUploadCapability,
   parseBoundedJsonBody,
   serviceErrorResponse,
   UPLOAD_SECURITY_HEADERS,
@@ -18,7 +18,7 @@ import {
 const MAX_VERIFY_BODY_BYTES = 16_384;
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const auth = extractUploadCapability(req);
+  const auth = await authenticateUploadRequest(req);
   if (!auth.ok) {
     return auth.response;
   }
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return errorJsonResponse("VALIDATION_ERROR", "fileId must be a non-empty string.", 400);
   }
 
-  const result = await verifyUploadFile(auth.token, { fileId: parsed.data.fileId });
+  const result = await inspectAndVerifyUploadFile(auth.requestId, parsed.data.fileId);
   if (!result.ok) {
     return serviceErrorResponse(result.error);
   }

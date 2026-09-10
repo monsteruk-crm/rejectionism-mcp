@@ -8,8 +8,36 @@ import {
   serviceErrorResponse,
 } from "@/lib/uploads/capability-auth";
 import { DEFAULT_BASE_URL } from "@/lib/auth/origin";
+import { authenticateUploadRequest } from "@/lib/uploads/upload-auth";
 
 describe("upload capability extraction and origin guard", () => {
+  it("allows a missing Origin only for explicitly configured read recovery", async () => {
+    const req = new NextRequest(`${DEFAULT_BASE_URL}/api/uploads/status`, {
+      method: "GET",
+      headers: { authorization: "Upload short-token" },
+    });
+    const outcome = await authenticateUploadRequest(req, { allowMissingOrigin: true });
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) {
+      expect(outcome.response.status).toBe(401);
+    }
+
+    const crossOriginReq = new NextRequest(`${DEFAULT_BASE_URL}/api/uploads/status`, {
+      method: "GET",
+      headers: {
+        origin: "https://evil.example.com",
+        authorization: "Upload short-token",
+      },
+    });
+    const crossOriginOutcome = await authenticateUploadRequest(crossOriginReq, {
+      allowMissingOrigin: true,
+    });
+    expect(crossOriginOutcome.ok).toBe(false);
+    if (!crossOriginOutcome.ok) {
+      expect(crossOriginOutcome.response.status).toBe(403);
+    }
+  });
+
   it("rejects missing origin for browser upload requests", () => {
     const req = new NextRequest(`${DEFAULT_BASE_URL}/api/uploads/prepare`, {
       method: "POST",

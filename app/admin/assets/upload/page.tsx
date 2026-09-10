@@ -1,33 +1,21 @@
 import { requireAdminPage } from "@/lib/auth/boundaries";
 import Link from "next/link";
-import { getPrisma } from "@/lib/prisma";
 import { AdminAssetUpload } from "../_components/asset-upload";
+import { listAdminUploadSessions } from "@/lib/campaign/admin-upload-sessions";
+import { AdminSessionHistory } from "./_components/session-history";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminAssetUploadPage() {
+export default async function AdminAssetUploadPage(props: {
+  searchParams: Promise<{ requestId?: string; offset?: string }>;
+}) {
   await requireAdminPage();
-  const prisma = getPrisma();
+  const searchParams = await props.searchParams;
+  const requestId = searchParams.requestId;
+  const offset = searchParams.offset ? Math.max(0, parseInt(searchParams.offset, 10) || 0) : 0;
 
-  const assetRows = await prisma.asset.findMany({
-    where: { status: { not: "SUPERSEDED" } },
-    orderBy: [{ name: "asc" }, { id: "asc" }],
-    include: {
-      revisions: {
-        orderBy: { revisionNumber: "desc" },
-        select: { id: true, revisionNumber: true, label: true },
-      },
-    },
-    take: 100,
-  });
-
-  const assetOptions = assetRows.map((a) => ({
-    id: a.id,
-    name: a.name,
-    kind: a.kind,
-    latestRevisionNumber: a.revisions[0]?.revisionNumber ?? null,
-    revisions: a.revisions,
-  }));
+  const sessionsRes = await listAdminUploadSessions({ limit: 10, offset });
+  const sessions = sessionsRes.ok ? sessionsRes.data.items : [];
 
   return (
     <div className="space-y-8">
@@ -52,12 +40,14 @@ export default async function AdminAssetUploadPage() {
             href="/admin/upload-links"
             className="text-xs font-bold uppercase tracking-wider text-ink/70 hover:text-ink"
           >
-            Upload Links
+            Contributor Links
           </Link>
         </div>
       </div>
 
-      <AdminAssetUpload assets={assetOptions} />
+      <AdminAssetUpload initialRequestId={requestId} />
+
+      <AdminSessionHistory sessions={sessions} currentRequestId={requestId} />
     </div>
   );
 }

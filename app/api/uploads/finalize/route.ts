@@ -1,8 +1,8 @@
 import "server-only";
 import { NextRequest, NextResponse } from "next/server";
-import { finalizeUploadRequest } from "@/lib/campaign/upload-finalization";
+import { finalizeUploadRequestByRequestId } from "@/lib/campaign/upload-finalization";
+import { authenticateUploadRequest } from "@/lib/uploads/upload-auth";
 import {
-  extractUploadCapability,
   parseBoundedJsonBody,
   serviceErrorResponse,
   UPLOAD_SECURITY_HEADERS,
@@ -17,7 +17,7 @@ import {
 const MAX_FINALIZE_BODY_BYTES = 2_097_152;
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const auth = extractUploadCapability(req);
+  const auth = await authenticateUploadRequest(req);
   if (!auth.ok) {
     return auth.response;
   }
@@ -27,7 +27,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return parsed.response;
   }
 
-  const result = await finalizeUploadRequest(auth.token, parsed.data);
+  const source = auth.authMode === "ADMIN_INTERNAL" ? "admin" : "public-upload";
+  const result = await finalizeUploadRequestByRequestId(auth.requestId, parsed.data, source);
   if (!result.ok) {
     return serviceErrorResponse(result.error);
   }

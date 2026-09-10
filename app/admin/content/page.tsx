@@ -3,20 +3,23 @@ import Link from "next/link";
 import { AdminServiceError } from "../_components/service-error";
 import { listContentItems } from "@/lib/campaign";
 import { StatusBadge } from "../_components/badge";
-import { createContentItemAction } from "../actions";
+import { CreateContentForm } from "../_components/forms/content-form";
+import { Pagination } from "../_components/pagination";
 
 export const dynamic = "force-dynamic";
 
 export default async function ContentListPage(props: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; offset?: string }>;
 }) {
   await requireAdminPage();
   const searchParams = await props.searchParams;
   const statusFilter = searchParams.status;
+  const offset = searchParams.offset ? Math.max(0, parseInt(searchParams.offset, 10) || 0) : 0;
 
   const result = await listContentItems({
     status: statusFilter,
-    limit: 100,
+    limit: 25,
+    offset,
   });
 
   const items = result.ok ? result.data.items : [];
@@ -132,135 +135,22 @@ export default async function ContentListPage(props: {
               </table>
             </div>
           )}
+
+          {result.ok && (
+            <div className="mt-4 border-t border-ink/20 pt-4">
+              <Pagination
+                total={total}
+                limit={25}
+                offset={offset}
+                basePath="/admin/content"
+                searchParams={searchParams}
+              />
+            </div>
+          )}
         </div>
 
         {/* Create Content Item Form */}
-        <div className="border-2 border-ink bg-paper p-6 shadow-[4px_4px_0px_0px_rgba(13,13,13,1)]">
-          <h2 className="border-b-2 border-ink pb-2 font-heading text-xl font-black uppercase">
-            Create Content Piece
-          </h2>
-
-          <form action={createContentItemAction} className="mt-4 space-y-4 text-xs font-sans">
-            <div>
-              <label htmlFor="title" className="block font-heading font-bold uppercase text-ink">
-                Title *
-              </label>
-              <input
-                type="text"
-                id="title"
-                name="title"
-                required
-                maxLength={200}
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                placeholder="e.g. Ministry Decree #01"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label htmlFor="format" className="block font-heading font-bold uppercase text-ink">
-                  Format *
-                </label>
-                <input
-                  type="text"
-                  id="format"
-                  name="format"
-                  required
-                  maxLength={200}
-                  className="mt-1 w-full border-2 border-ink bg-cream p-2 font-mono text-xs text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                  placeholder="e.g. decree, comic, story"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="channel"
-                  className="block font-heading font-bold uppercase text-ink"
-                >
-                  Channel *
-                </label>
-                <input
-                  type="text"
-                  id="channel"
-                  name="channel"
-                  required
-                  maxLength={200}
-                  className="mt-1 w-full border-2 border-ink bg-cream p-2 font-mono text-xs text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                  placeholder="e.g. web, facebook, press"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="status" className="block font-heading font-bold uppercase text-ink">
-                Status
-              </label>
-              <select
-                id="status"
-                name="status"
-                defaultValue="DRAFT"
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 font-heading uppercase text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-              >
-                <option value="DRAFT">DRAFT</option>
-                <option value="SCHEDULED">SCHEDULED</option>
-                <option value="PUBLISHED">PUBLISHED</option>
-              </select>
-            </div>
-
-            <div>
-              <label
-                htmlFor="scheduledFor"
-                className="block font-heading font-bold uppercase text-ink"
-              >
-                Scheduled For (if SCHEDULED)
-              </label>
-              <input
-                type="date"
-                id="scheduledFor"
-                name="scheduledFor"
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 font-mono text-xs text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="publishedUrl"
-                className="block font-heading font-bold uppercase text-ink"
-              >
-                Published URL (if PUBLISHED)
-              </label>
-              <input
-                type="url"
-                id="publishedUrl"
-                name="publishedUrl"
-                maxLength={2048}
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 font-mono text-xs text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                placeholder="https://..."
-              />
-            </div>
-
-            <div>
-              <label htmlFor="notes" className="block font-heading font-bold uppercase text-ink">
-                Notes / Copy
-              </label>
-              <textarea
-                id="notes"
-                name="notes"
-                rows={3}
-                maxLength={20000}
-                className="mt-1 w-full border-2 border-ink bg-cream p-2 text-ink focus:outline-none focus:ring-2 focus:ring-rejection-red"
-                placeholder="Draft text or editorial instructions"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full border-2 border-ink bg-ink py-2 font-heading text-xs font-bold uppercase tracking-widest text-cream hover:bg-rejection-red"
-            >
-              Create Content
-            </button>
-          </form>
-        </div>
+        <CreateContentForm />
       </div>
     </div>
   );

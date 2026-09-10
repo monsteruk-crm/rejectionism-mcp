@@ -2,11 +2,13 @@ import { z } from "zod";
 
 /**
  * Browser-safe schemas for generic tags (upgrade plan section 4). The generic
- * entity selector intentionally covers only the original seven domain entity
- * types; UPLOAD_REQUEST, TAG, and ENTITY_RELATION are never taggable targets.
+ * entity selector covers the eight generic domain entity types; UPLOAD_REQUEST,
+ * TAG, ENTITY_RELATION, and any future infrastructure types are never taggable
+ * targets. The expanded set is the authoritative selector for new code; the
+ * original seven-element alias is retained for backwards-compatible reads.
  */
 
-export const ORIGINAL_ENTITY_TYPES = [
+export const CAMPAIGN_ENTITY_TYPES = [
   "WORK_ITEM",
   "CANON_ENTRY",
   "DECISION",
@@ -14,11 +16,28 @@ export const ORIGINAL_ENTITY_TYPES = [
   "WEBSITE",
   "CONTENT_ITEM",
   "CONTACT",
+  "CAMPAIGN_MEMORY",
 ] as const;
 
-export type OriginalEntityType = (typeof ORIGINAL_ENTITY_TYPES)[number];
+export type CampaignEntityType = (typeof CAMPAIGN_ENTITY_TYPES)[number];
 
-export const OriginalEntityTypeSchema = z.enum(ORIGINAL_ENTITY_TYPES);
+export const CampaignEntityTypeSchema = z.enum(CAMPAIGN_ENTITY_TYPES);
+
+/**
+ * @deprecated Use `CampaignEntityType`. Retained as a documented alias for
+ * transition only; will be removed when no service code references it.
+ */
+export const ORIGINAL_ENTITY_TYPES = CAMPAIGN_ENTITY_TYPES;
+
+/**
+ * @deprecated Use `CampaignEntityType`.
+ */
+export type OriginalEntityType = CampaignEntityType;
+
+/**
+ * @deprecated Use `CampaignEntityTypeSchema`.
+ */
+export const OriginalEntityTypeSchema = CampaignEntityTypeSchema;
 
 export const EntityIdSchema = z
   .string()
@@ -28,13 +47,13 @@ export const EntityIdSchema = z
 
 export const EntityRefSchema = z
   .object({
-    entityType: OriginalEntityTypeSchema,
+    entityType: CampaignEntityTypeSchema,
     entityId: EntityIdSchema,
   })
   .strict();
 
 export interface EntityRef {
-  entityType: OriginalEntityType;
+  entityType: CampaignEntityType;
   entityId: string;
 }
 
@@ -83,7 +102,7 @@ export const ListTagsQuerySchema = z
 
 export const TagEntityInputSchema = z
   .object({
-    entityType: OriginalEntityTypeSchema,
+    entityType: CampaignEntityTypeSchema,
     entityId: EntityIdSchema,
     tag: TagDisplayNameSchema,
   })
@@ -91,7 +110,7 @@ export const TagEntityInputSchema = z
 
 export const UntagEntityInputSchema = z
   .object({
-    entityType: OriginalEntityTypeSchema,
+    entityType: CampaignEntityTypeSchema,
     entityId: EntityIdSchema,
     tagSlug: TagSlugSchema,
   })

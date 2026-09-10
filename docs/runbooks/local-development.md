@@ -58,10 +58,19 @@ holds Assets is, in order:
 1. `pnpm db:deploy` — applies the migration (also inserts revision 1 rows).
 2. `pnpm db:backfill-assets` — creates an EXTERNAL_URL representation on
    revision 1 for each Asset whose legacy URL passes validation. Idempotent:
-   the `legacyAssetId` marker skips already migrated rows, invalid URLs stay
-   untouched, and no Asset column, version, or timestamp is modified.
+   runs safely multiple times and ignores Assets already possessing a
+   primary representation.
 3. `pnpm db:seed` — seeds missing fixtures; existing Assets are never
    refreshed.
+
+### CampaignMemory Migrations
+
+Migrations `20260910100000_campaign_memory_entity_type` and
+`20260910100100_campaign_memory` are purely additive. They introduce the
+`CAMPAIGN_MEMORY` entity type, memory enums and table, numeric/hash/partial-unique
+constraints, and widen the generic tag/relation allowlists without altering
+existing records. `pnpm db:seed` deliberately does not seed speculative operational
+memories (ADR 0007).
 
 Run the sequence on an explicitly disposable development database first. For
 any shared or deployed database, the backfill is a separately authorized
@@ -80,7 +89,13 @@ pnpm test:watch
 
 # Apply migrations and seed data, then run integration tests. TEST_MCP_PRISMA_DATABASE_URL
 # must be a disposable PostgreSQL database and must differ from MCP_PRISMA_DATABASE_URL.
-TEST_MCP_PRISMA_DATABASE_URL=postgresql://... pnpm test:integration
+CAMPAIGNOS_TEST_DISPOSABLE=1 TEST_MCP_PRISMA_DATABASE_URL=postgresql://... pnpm test:integration
+
+# Run MCP protocol suite against running server
+pnpm test:mcp --origin=http://localhost:3000
+
+# Run functional release verification gate
+pnpm verify:functional --origin=http://localhost:3000
 
 # Format code with Prettier
 pnpm format
@@ -95,7 +110,7 @@ pnpm test:client -- http://localhost:3000 --test-writes --disposable-database
 
 The default smoke command is a release gate: tool registration, `echo`, database connectivity, and required campaign reads must succeed with the documented structured response shape. It exits nonzero for degraded results. Write mode creates a uniquely identified work item, requires the disposable-database acknowledgement, and must never target persistent operational data.
 
-The integration harness refuses to run without `TEST_MCP_PRISMA_DATABASE_URL` or when it exactly matches `MCP_PRISMA_DATABASE_URL`. It does not reset or drop the target. Tests remove run-specific records, while deterministic seed fixtures remain for subsequent idempotent runs.
+The integration harness refuses to run without `CAMPAIGNOS_TEST_DISPOSABLE=1` and `TEST_MCP_PRISMA_DATABASE_URL`, or when the test target exactly matches `MCP_PRISMA_DATABASE_URL`. It does not reset or drop the target. Tests remove run-specific records, while deterministic seed fixtures remain for subsequent idempotent runs.
 
 ### Integration Harness Behavior
 

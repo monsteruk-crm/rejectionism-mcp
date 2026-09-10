@@ -65,6 +65,18 @@ export interface ClientExternalUrlItem {
 
 export type ClientUploadItem = ClientFileItem | ClientExternalUrlItem;
 
+export interface UploadFileStatusDto {
+  id: string;
+  clientItemId: string;
+  status: "PENDING" | "VERIFIED" | "REJECTED" | "ATTACHED" | "DISCARDED";
+  sourceFilename: string;
+  declaredMimeType: string;
+  expectedByteSize: number;
+  byteSize: number | null;
+  mimeType: string | null;
+  failureCode: string | null;
+}
+
 export interface PrepareFileResponse {
   fileId: string;
   blobPathname: string;

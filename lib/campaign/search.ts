@@ -7,7 +7,7 @@ import {
   SearchResultDto,
   SearchOutputDto,
 } from "./search-schemas";
-import { OriginalEntityType } from "./tag-schemas";
+import type { CampaignEntityType } from "./tag-schemas";
 import { Prisma } from "@/app/generated/prisma/client";
 
 /**
@@ -23,7 +23,7 @@ import { Prisma } from "@/app/generated/prisma/client";
  *   or exposed in snippets.
  */
 
-const ALL_ENTITY_TYPES: OriginalEntityType[] = [
+const ALL_ENTITY_TYPES: CampaignEntityType[] = [
   "WORK_ITEM",
   "CANON_ENTRY",
   "DECISION",
@@ -31,9 +31,10 @@ const ALL_ENTITY_TYPES: OriginalEntityType[] = [
   "WEBSITE",
   "CONTENT_ITEM",
   "CONTACT",
+  "CAMPAIGN_MEMORY",
 ];
 
-const ENTITY_TYPE_ORDER: Record<OriginalEntityType, number> = {
+const ENTITY_TYPE_ORDER: Record<CampaignEntityType, number> = {
   WORK_ITEM: 1,
   CANON_ENTRY: 2,
   DECISION: 3,
@@ -41,6 +42,7 @@ const ENTITY_TYPE_ORDER: Record<OriginalEntityType, number> = {
   WEBSITE: 5,
   CONTENT_ITEM: 6,
   CONTACT: 7,
+  CAMPAIGN_MEMORY: 8,
 };
 
 export function escapeLikePattern(input: string): string {
@@ -93,8 +95,10 @@ export async function searchCampaign(rawInput: unknown): Promise<ServiceResult<S
   }
 
   const { query, entityTypes, tags, limit, offset } = parsed.data;
+  const deduplicatedTags = tags && tags.length > 0 ? Array.from(new Set(tags)) : undefined;
   const targetTypes = entityTypes && entityTypes.length > 0 ? entityTypes : ALL_ENTITY_TYPES;
   const maxCandidateRows = limit + offset;
+  const escapedQuery = escapeLikePattern(query);
 
   try {
     const prisma = getPrisma();
@@ -103,16 +107,16 @@ export async function searchCampaign(rawInput: unknown): Promise<ServiceResult<S
     const result = await prisma.$transaction(
       async (tx) => {
         // 1. Resolve tag filtering IDs if tags are requested
-        const requiredTagIdsByType = new Map<OriginalEntityType, Set<string>>();
+        const requiredTagIdsByType = new Map<CampaignEntityType, Set<string>>();
 
-        if (tags && tags.length > 0) {
+        if (deduplicatedTags && deduplicatedTags.length > 0) {
           const tagRows = await tx.tag.findMany({
-            where: { slug: { in: tags } },
+            where: { slug: { in: deduplicatedTags } },
             select: { id: true },
           });
 
           // Unknown requested slug produces 0 results globally
-          if (tagRows.length !== tags.length) {
+          if (tagRows.length !== deduplicatedTags.length) {
             return { items: [], total: 0, limit, offset };
           }
 
@@ -134,7 +138,7 @@ export async function searchCampaign(rawInput: unknown): Promise<ServiceResult<S
 
             const qualifiedIds = new Set<string>();
             for (const [id, count] of counts.entries()) {
-              if (count >= tags.length) {
+              if (count >= deduplicatedTags.length) {
                 qualifiedIds.add(id);
               }
             }
@@ -148,14 +152,14 @@ export async function searchCampaign(rawInput: unknown): Promise<ServiceResult<S
         let grandTotal = 0;
 
         // Helper to get tag matches for an entity type
-        const getTagMatchedEntityIds = async (type: OriginalEntityType): Promise<Map<string, string[]>> => {
+        const getTagMatchedEntityIds = async (type: CampaignEntityType): Promise<Map<string, string[]>> => {
           const entityTagRows = await tx.entityTag.findMany({
             where: {
               entityType: type,
               tag: {
                 OR: [
-                  { name: { contains: query, mode: "insensitive" } },
-                  { slug: { contains: query, mode: "insensitive" } },
+                  { name: { contains: escapedQuery, mode: "insensitive" } },
+                  { slug: { contains: escapedQuery, mode: "insensitive" } },
                 ],
               },
             },
@@ -173,7 +177,7 @@ export async function searchCampaign(rawInput: unknown): Promise<ServiceResult<S
 
         for (const type of targetTypes) {
           const requiredIds = requiredTagIdsByType.get(type);
-          if (tags && requiredIds && requiredIds.size === 0) {
+          if (deduplicatedTags && requiredIds && requiredIds.size === 0) {
             // No entities of this type have all required tags
             continue;
           }
@@ -184,10 +188,10 @@ export async function searchCampaign(rawInput: unknown): Promise<ServiceResult<S
           if (type === "WORK_ITEM") {
             const textWhere: Prisma.WorkItemWhereInput = {
               OR: [
-                { title: { contains: query, mode: "insensitive" } },
-                { description: { contains: query, mode: "insensitive" } },
-                { blockedReason: { contains: query, mode: "insensitive" } },
-                { completionNote: { contains: query, mode: "insensitive" } },
+                { title: { contains: escapedQuery, mode: "insensitive" } },
+                { description: { contains: escapedQuery, mode: "insensitive" } },
+                { blockedReason: { contains: escapedQuery, mode: "insensitive" } },
+                { completionNote: { contains: escapedQuery, mode: "insensitive" } },
                 ...(tagMatchedIds.length > 0 ? [{ id: { in: tagMatchedIds } }] : []),
               ],
             };
@@ -245,10 +249,10 @@ export async function searchCampaign(rawInput: unknown): Promise<ServiceResult<S
           } else if (type === "CANON_ENTRY") {
             const textWhere: Prisma.CanonEntryWhereInput = {
               OR: [
-                { key: { contains: query, mode: "insensitive" } },
-                { value: { contains: query, mode: "insensitive" } },
-                { category: { contains: query, mode: "insensitive" } },
-                { notes: { contains: query, mode: "insensitive" } },
+                { key: { contains: escapedQuery, mode: "insensitive" } },
+                { value: { contains: escapedQuery, mode: "insensitive" } },
+                { category: { contains: escapedQuery, mode: "insensitive" } },
+                { notes: { contains: escapedQuery, mode: "insensitive" } },
                 ...(tagMatchedIds.length > 0 ? [{ id: { in: tagMatchedIds } }] : []),
               ],
             };
@@ -305,9 +309,9 @@ export async function searchCampaign(rawInput: unknown): Promise<ServiceResult<S
           } else if (type === "DECISION") {
             const textWhere: Prisma.DecisionWhereInput = {
               OR: [
-                { subject: { contains: query, mode: "insensitive" } },
-                { decision: { contains: query, mode: "insensitive" } },
-                { rationale: { contains: query, mode: "insensitive" } },
+                { subject: { contains: escapedQuery, mode: "insensitive" } },
+                { decision: { contains: escapedQuery, mode: "insensitive" } },
+                { rationale: { contains: escapedQuery, mode: "insensitive" } },
                 ...(tagMatchedIds.length > 0 ? [{ id: { in: tagMatchedIds } }] : []),
               ],
             };
@@ -365,19 +369,19 @@ export async function searchCampaign(rawInput: unknown): Promise<ServiceResult<S
           } else if (type === "ASSET") {
             const textWhere: Prisma.AssetWhereInput = {
               OR: [
-                { name: { contains: query, mode: "insensitive" } },
-                { kind: { contains: query, mode: "insensitive" } },
-                { notes: { contains: query, mode: "insensitive" } },
-                { sourceFilename: { contains: query, mode: "insensitive" } },
+                { name: { contains: escapedQuery, mode: "insensitive" } },
+                { kind: { contains: escapedQuery, mode: "insensitive" } },
+                { notes: { contains: escapedQuery, mode: "insensitive" } },
+                { sourceFilename: { contains: escapedQuery, mode: "insensitive" } },
                 {
                   revisions: {
                     some: {
                       representations: {
                         some: {
                           OR: [
-                            { label: { contains: query, mode: "insensitive" } },
-                            { notes: { contains: query, mode: "insensitive" } },
-                            { sourceFilename: { contains: query, mode: "insensitive" } },
+                            { label: { contains: escapedQuery, mode: "insensitive" } },
+                            { notes: { contains: escapedQuery, mode: "insensitive" } },
+                            { sourceFilename: { contains: escapedQuery, mode: "insensitive" } },
                           ],
                         },
                       },
@@ -455,10 +459,10 @@ export async function searchCampaign(rawInput: unknown): Promise<ServiceResult<S
           } else if (type === "WEBSITE") {
             const textWhere: Prisma.WebsiteWhereInput = {
               OR: [
-                { name: { contains: query, mode: "insensitive" } },
-                { domain: { contains: query, mode: "insensitive" } },
-                { purpose: { contains: query, mode: "insensitive" } },
-                { notes: { contains: query, mode: "insensitive" } },
+                { name: { contains: escapedQuery, mode: "insensitive" } },
+                { domain: { contains: escapedQuery, mode: "insensitive" } },
+                { purpose: { contains: escapedQuery, mode: "insensitive" } },
+                { notes: { contains: escapedQuery, mode: "insensitive" } },
                 ...(tagMatchedIds.length > 0 ? [{ id: { in: tagMatchedIds } }] : []),
               ],
             };
@@ -515,10 +519,10 @@ export async function searchCampaign(rawInput: unknown): Promise<ServiceResult<S
           } else if (type === "CONTENT_ITEM") {
             const textWhere: Prisma.ContentItemWhereInput = {
               OR: [
-                { title: { contains: query, mode: "insensitive" } },
-                { format: { contains: query, mode: "insensitive" } },
-                { channel: { contains: query, mode: "insensitive" } },
-                { notes: { contains: query, mode: "insensitive" } },
+                { title: { contains: escapedQuery, mode: "insensitive" } },
+                { format: { contains: escapedQuery, mode: "insensitive" } },
+                { channel: { contains: escapedQuery, mode: "insensitive" } },
+                { notes: { contains: escapedQuery, mode: "insensitive" } },
                 ...(tagMatchedIds.length > 0 ? [{ id: { in: tagMatchedIds } }] : []),
               ],
             };
@@ -576,10 +580,10 @@ export async function searchCampaign(rawInput: unknown): Promise<ServiceResult<S
             // Note: Contact email and notes are NEVER searched (Section 4 rules)
             const textWhere: Prisma.ContactWhereInput = {
               OR: [
-                { name: { contains: query, mode: "insensitive" } },
-                { organization: { contains: query, mode: "insensitive" } },
-                { role: { contains: query, mode: "insensitive" } },
-                { status: { contains: query, mode: "insensitive" } },
+                { name: { contains: escapedQuery, mode: "insensitive" } },
+                { organization: { contains: escapedQuery, mode: "insensitive" } },
+                { role: { contains: escapedQuery, mode: "insensitive" } },
+                { status: { contains: escapedQuery, mode: "insensitive" } },
                 ...(tagMatchedIds.length > 0 ? [{ id: { in: tagMatchedIds } }] : []),
               ],
             };

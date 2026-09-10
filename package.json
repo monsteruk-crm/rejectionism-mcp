@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack 2>&1 | tee -a dev-server.log",
     "build": "prisma generate --config prisma7.config.ts && next build",
     "start": "next start",
     "type-check": "tsc --noEmit",
@@ -12,6 +12,9 @@
     "test:watch": "vitest",
     "test:integration": "node scripts/test-integration.mjs",
     "test:client": "node scripts/test-client.mjs",
+    "test:mcp": "node scripts/test-mcp.mjs",
+    "test:staging": "node scripts/test-staging.mjs",
+    "verify:functional": "node scripts/verify-functional.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:validate": "prisma validate --config prisma7.config.ts",

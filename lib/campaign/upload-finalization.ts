@@ -166,23 +166,22 @@ async function createRevisionForSubmission(
     });
   }
 
-  await createActivityTx(tx, {
-    entityType: "ASSET",
-    entityId: params.assetId,
-    action: "ASSET_REVISION_CREATED",
-    summary:
-      params.revisionId !== undefined
-        ? "Append upload submission to revision"
-        : `Created revision ${revisionNumber} for asset`,
-    source: context.source,
-    metadata: {
-      revisionId,
-      revisionNumber,
-      viaUploadRequestId: context.request.id,
-      oldVersion: params.expectedVersion,
-      newVersion: params.expectedVersion + 1,
-    },
-  });
+  if (params.revisionId === undefined) {
+    await createActivityTx(tx, {
+      entityType: "ASSET",
+      entityId: params.assetId,
+      action: "ASSET_REVISION_CREATED",
+      summary: `Created revision ${revisionNumber} for asset`,
+      source: context.source,
+      metadata: {
+        revisionId,
+        revisionNumber,
+        viaUploadRequestId: context.request.id,
+        oldVersion: params.expectedVersion,
+        newVersion: params.expectedVersion + 1,
+      },
+    });
+  }
 
   return { revisionId, revisionNumber };
 }
@@ -551,16 +550,11 @@ async function runFinalization(context: FinalizeContext): Promise<StoredReceipt>
   return receipt;
 }
 
-export async function finalizeUploadRequest(
-  rawToken: string,
+export async function finalizeUploadRequestByRequestId(
+  requestId: string,
   rawInput: unknown,
   source: MutationSource = "public-upload",
 ): Promise<ServiceResult<{ receipt: PublicFinalizeReceipt }>> {
-  // Validate token syntax and strict input before acquiring any lock.
-  if (!isRawUploadToken(rawToken)) {
-    return fail("VALIDATION_ERROR", "Malformed upload capability token.");
-  }
-
   const parsed = FinalizeUploadInputSchema.safeParse(rawInput);
   if (!parsed.success) {
     return handleServiceError(parsed.error);
@@ -570,21 +564,21 @@ export async function finalizeUploadRequest(
 
   try {
     const prisma = getPrisma();
-    const tokenHash = await hashUploadToken(rawToken);
     const submissionHash = await hashFinalizationPayload(input.submissionKey, input.items);
     const now = new Date();
 
     const outcome = await prisma.$transaction(
       async (tx) => {
-        const locked = await lockUploadRequestByHash(tx, tokenHash);
+        const locked = await tx.uploadRequest.findUnique({
+          where: { id: requestId },
+        });
         if (!locked) {
           throw new Error("NOT_FOUND");
         }
 
         if (locked.status === "SUBMITTED") {
           if (locked.submissionKey === input.submissionKey && locked.submissionHash === submissionHash) {
-            // Identical-request replay: return the stored receipt without
-            // writes, even past the original expiry.
+            // Identical-request replay: return the stored receipt without writes
             const stored = locked.submissionReceipt as StoredReceipt | null;
             if (!stored) {
               throw new Error("INTERNAL_ERROR");
@@ -596,7 +590,6 @@ export async function finalizeUploadRequest(
         if (locked.status === "REVOKED") {
           throw new Error("UPLOAD_REVOKED");
         }
-        // Verified with current server time after obtaining the lock.
         if (locked.expiresAt.getTime() <= now.getTime()) {
           throw new Error("UPLOAD_EXPIRED");
         }
@@ -605,8 +598,6 @@ export async function finalizeUploadRequest(
           throw new Error("UPLOAD_LIMIT_EXCEEDED");
         }
 
-        // Revalidate target existence/ownership against the persisted target
-        // before any write; the captured version is never overridable.
         if (locked.targetAssetId !== null || locked.targetRevisionId !== null) {
           const targetAsset = locked.targetAssetId
             ? await tx.asset.findUnique({
@@ -651,8 +642,6 @@ export async function finalizeUploadRequest(
       { maxWait: 15000, timeout: 60000 },
     );
 
-    // Public result: never entity IDs, filenames, representation metadata,
-    // or download URLs.
     return ok({
       receipt: {
         requestId: outcome.requestId,
@@ -661,6 +650,31 @@ export async function finalizeUploadRequest(
         itemCount: outcome.receipt.itemCount,
       },
     });
+  } catch (error) {
+    return mapUploadRequestError(error);
+  }
+}
+
+export async function finalizeUploadRequest(
+  rawToken: string,
+  rawInput: unknown,
+  source: MutationSource = "public-upload",
+): Promise<ServiceResult<{ receipt: PublicFinalizeReceipt }>> {
+  if (!isRawUploadToken(rawToken)) {
+    return fail("VALIDATION_ERROR", "Malformed upload capability token.");
+  }
+
+  try {
+    const prisma = getPrisma();
+    const tokenHash = await hashUploadToken(rawToken);
+    const request = await prisma.uploadRequest.findFirst({
+      where: { tokenHash, purpose: "CONTRIBUTOR" },
+      select: { id: true },
+    });
+    if (!request) {
+      return fail("NOT_FOUND", "Upload request not found.");
+    }
+    return finalizeUploadRequestByRequestId(request.id, rawInput, source);
   } catch (error) {
     return mapUploadRequestError(error);
   }

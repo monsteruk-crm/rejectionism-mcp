@@ -1,63 +1,93 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UploadForm } from "@/app/upload/_components/upload-form";
 import type { PublicUploadRequestDto } from "@/lib/uploads/client-contract";
-import { createUploadRequestAction } from "../../upload-links/actions";
-import { FormFeedback } from "../../_components/form-feedback";
+import type { UploadFileStatusDto } from "@/lib/uploads/client-contract";
+import { createAdminUploadSessionAction } from "../upload/actions";
+import { EntityPicker } from "@/app/admin/_components/entity-picker";
+import type { EntityLookupItem, AssetRevisionLookupItem } from "@/lib/campaign/admin-lookups";
 
-interface AssetOption {
-  id: string;
-  name: string;
-  kind: string;
-  latestRevisionNumber: number | null;
-  revisions?: Array<{ id: string; revisionNumber: number; label: string | null }>;
-}
-
-export function AdminAssetUpload({ assets }: { assets: AssetOption[] }) {
+export function AdminAssetUpload({ initialRequestId }: { initialRequestId?: string }) {
   const [groupingMode, setGroupingMode] = useState<
     "NEW_ASSETS" | "NEW_REVISION" | "APPEND_REPRESENTATIONS"
   >("NEW_ASSETS");
 
-  const [selectedAssetId, setSelectedAssetId] = useState<string>("");
-  const [selectedRevisionId, setSelectedRevisionId] = useState<string>("");
+  const [selectedAsset, setSelectedAsset] = useState<EntityLookupItem | null>(null);
+  const [selectedRevision, setSelectedRevision] = useState<AssetRevisionLookupItem | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
 
   // Active session data
   const [activeSession, setActiveSession] = useState<{
-    token: string;
+    requestId: string;
     requestDto: PublicUploadRequestDto;
+    files: UploadFileStatusDto[];
   } | null>(null);
 
-  const selectedAsset = assets.find((a) => a.id === selectedAssetId);
+  useEffect(() => {
+    if (initialRequestId) {
+      fetch("/api/uploads/status", {
+        headers: {
+          "X-CampaignOS-Upload-Request-Id": initialRequestId,
+        },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && data.requestId) {
+            setActiveSession({
+              requestId: data.requestId,
+              requestDto: {
+                title: "Internal Admin Upload Session",
+                instructions: "Files uploaded here will be processed directly into the asset register.",
+                expiresAt: data.expiresAt,
+                maxItems: data.maxItems,
+                targetingMode: "NEW_ASSETS",
+                status: data.effectiveStatus,
+                allowedMimeTypes: [
+                  "image/png",
+                  "image/jpeg",
+                  "image/gif",
+                  "image/webp",
+                  "image/svg+xml",
+                  "application/pdf",
+                  "application/zip",
+                ],
+                maxFileBytes: 104_857_600,
+                maxSvgBytes: 2_097_152,
+                maxSubmissionBytes: 524_288_000,
+                submissionReceipt: data.receipt,
+              },
+              files: data.files ?? [],
+            });
+          }
+        })
+        .catch(() => undefined);
+    }
+  }, [initialRequestId]);
 
   const handleInitializeSession = async () => {
     setIsInitializing(true);
     setInitError(null);
 
     try {
-      if (groupingMode === "NEW_REVISION" && !selectedAssetId) {
+      if (groupingMode === "NEW_REVISION" && !selectedAsset) {
         throw new Error("Please select a target asset for the new revision.");
       }
 
-      if (groupingMode === "APPEND_REPRESENTATIONS" && (!selectedAssetId || !selectedRevisionId)) {
+      if (groupingMode === "APPEND_REPRESENTATIONS" && (!selectedAsset || !selectedRevision)) {
         throw new Error("Please select both a target asset and revision.");
       }
 
       const formData = new FormData();
-      formData.set("title", `Admin asset upload - ${groupingMode}`);
-      formData.set("maxItems", "50");
-      formData.set("expiresInDays", "1");
-
-      if (groupingMode === "NEW_REVISION") {
-        formData.set("targetAssetId", selectedAssetId);
-      } else if (groupingMode === "APPEND_REPRESENTATIONS") {
-        formData.set("targetAssetId", selectedAssetId);
-        formData.set("targetRevisionId", selectedRevisionId);
+      if (groupingMode === "NEW_REVISION" && selectedAsset) {
+        formData.set("targetAssetId", selectedAsset.id);
+      } else if (groupingMode === "APPEND_REPRESENTATIONS" && selectedAsset && selectedRevision) {
+        formData.set("targetAssetId", selectedAsset.id);
+        formData.set("targetRevisionId", selectedRevision.id);
       }
 
-      const res = await createUploadRequestAction(null, formData);
+      const res = await createAdminUploadSessionAction(null, formData);
 
       if (!res.ok) {
         throw new Error(res.error || "Failed to initialize upload session.");
@@ -66,19 +96,14 @@ export function AdminAssetUpload({ assets }: { assets: AssetOption[] }) {
         throw new Error("Failed to initialize upload session.");
       }
 
-      const rawToken = res.data.uploadUrl.split("/upload/")[1];
-      if (!rawToken) {
-        throw new Error("Invalid upload URL returned.");
-      }
-
       const publicDto: PublicUploadRequestDto = {
-        title: `Admin asset upload`,
+        title: "Internal Admin Upload Session",
         instructions:
           groupingMode === "NEW_ASSETS"
             ? "Submissions will create separate visual assets."
             : groupingMode === "NEW_REVISION"
-              ? `Submissions will create a new revision on asset: ${selectedAsset?.name || selectedAssetId}`
-              : `Submissions will append representations to revision on asset: ${selectedAsset?.name || selectedAssetId}`,
+              ? `Submissions will create a new revision on asset: ${selectedAsset?.title || selectedAsset?.id}`
+              : `Submissions will append representations to revision on asset: ${selectedAsset?.title || selectedAsset?.id}`,
         expiresAt: res.data.expiresAt,
         maxItems: 50,
         targetingMode: groupingMode,
@@ -98,8 +123,9 @@ export function AdminAssetUpload({ assets }: { assets: AssetOption[] }) {
       };
 
       setActiveSession({
-        token: rawToken,
+        requestId: res.data.id,
         requestDto: publicDto,
+        files: [],
       });
     } catch (err) {
       setInitError(err instanceof Error ? err.message : "Failed to initialize session.");
@@ -114,24 +140,30 @@ export function AdminAssetUpload({ assets }: { assets: AssetOption[] }) {
         <div className="flex items-center justify-between border-2 border-ink bg-paper p-4">
           <div>
             <p className="font-heading text-xs font-bold uppercase tracking-wider text-rejection-red">
-              Active Upload Session // {groupingMode.replace(/_/g, " ")}
+              Active Internal Upload Session // ID: #{activeSession.requestId.slice(-8)}
             </p>
             <p className="font-sans text-xs text-ink/70">
-              Files uploaded here will be processed directly into the asset register.
+              Files uploaded here will be processed directly into the asset register without creating a public capability link.
             </p>
           </div>
           <button
             type="button"
-            onClick={() => setActiveSession(null)}
-            className="border border-ink bg-cream px-3 py-1 font-heading text-xs font-bold uppercase hover:bg-ink hover:text-cream"
+            onClick={() => {
+              if (confirm("Reset current upload session view? Any active session will remain available in history.")) {
+                setActiveSession(null);
+              }
+            }}
+            className="cursor-pointer border border-ink bg-cream px-3 py-1 font-heading text-xs font-bold uppercase hover:bg-ink hover:text-cream"
           >
             Change Mode / Reset
           </button>
         </div>
 
         <UploadForm
-          uploadToken={activeSession.token}
+          requestId={activeSession.requestId}
           request={activeSession.requestDto}
+          isAdminInternal={true}
+          initialServerFiles={activeSession.files}
         />
       </div>
     );
@@ -145,7 +177,7 @@ export function AdminAssetUpload({ assets }: { assets: AssetOption[] }) {
 
       <p className="mt-3 font-sans text-xs text-ink/80">
         Specify how incoming uploaded files and external links should be registered in the
-        system. Grouping mode must be selected before file preparation.
+        system. Internal sessions use your active admin session and create no public capability URLs.
       </p>
 
       {initError && (
@@ -208,25 +240,12 @@ export function AdminAssetUpload({ assets }: { assets: AssetOption[] }) {
 
             {groupingMode === "NEW_REVISION" && (
               <div className="mt-3">
-                <label
-                  htmlFor="select_target_asset"
-                  className="block font-heading text-xs font-bold uppercase text-ink"
-                >
-                  Select Target Asset:
-                </label>
-                <select
-                  id="select_target_asset"
-                  value={selectedAssetId}
-                  onChange={(e) => setSelectedAssetId(e.target.value)}
-                  className="mt-1 w-full border-2 border-ink bg-paper p-2 font-sans text-xs text-ink focus:outline-none"
-                >
-                  <option value="">-- Choose an asset --</option>
-                  {assets.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name} ({a.kind}) — v{a.latestRevisionNumber ?? 1}
-                    </option>
-                  ))}
-                </select>
+                <EntityPicker
+                  label="Select Target Asset *"
+                  entityTypes={["ASSET"]}
+                  selectedItem={selectedAsset}
+                  onSelect={(item) => setSelectedAsset(item)}
+                />
               </div>
             )}
           </div>
@@ -258,55 +277,19 @@ export function AdminAssetUpload({ assets }: { assets: AssetOption[] }) {
             </p>
 
             {groupingMode === "APPEND_REPRESENTATIONS" && (
-              <div className="mt-3 space-y-3">
-                <div>
-                  <label
-                    htmlFor="select_target_asset_rep"
-                    className="block font-heading text-xs font-bold uppercase text-ink"
-                  >
-                    Select Target Asset:
-                  </label>
-                  <select
-                    id="select_target_asset_rep"
-                    value={selectedAssetId}
-                    onChange={(e) => {
-                      setSelectedAssetId(e.target.value);
-                      setSelectedRevisionId("");
-                    }}
-                    className="mt-1 w-full border-2 border-ink bg-paper p-2 font-sans text-xs text-ink focus:outline-none"
-                  >
-                    <option value="">-- Choose an asset --</option>
-                    {assets.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name} ({a.kind})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {selectedAsset && selectedAsset.revisions && selectedAsset.revisions.length > 0 && (
-                  <div>
-                    <label
-                      htmlFor="select_target_revision"
-                      className="block font-heading text-xs font-bold uppercase text-ink"
-                    >
-                      Select Revision:
-                    </label>
-                    <select
-                      id="select_target_revision"
-                      value={selectedRevisionId}
-                      onChange={(e) => setSelectedRevisionId(e.target.value)}
-                      className="mt-1 w-full border-2 border-ink bg-paper p-2 font-sans text-xs text-ink focus:outline-none"
-                    >
-                      <option value="">-- Choose a revision --</option>
-                      {selectedAsset.revisions.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          Revision {r.revisionNumber} {r.label ? `(${r.label})` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+              <div className="mt-3">
+                <EntityPicker
+                  label="Select Target Asset & Revision *"
+                  entityTypes={["ASSET"]}
+                  selectedItem={selectedAsset}
+                  onSelect={(item) => {
+                    setSelectedAsset(item);
+                    setSelectedRevision(null);
+                  }}
+                  allowRevisionSelection={true}
+                  selectedRevision={selectedRevision}
+                  onSelectRevision={(rev) => setSelectedRevision(rev)}
+                />
               </div>
             )}
           </div>
@@ -318,7 +301,7 @@ export function AdminAssetUpload({ assets }: { assets: AssetOption[] }) {
           type="button"
           onClick={handleInitializeSession}
           disabled={isInitializing}
-          className="w-full border-2 border-ink bg-ink py-2.5 font-heading text-xs font-bold uppercase tracking-widest text-cream hover:bg-rejection-red disabled:opacity-50"
+          className="cursor-pointer w-full border-2 border-ink bg-ink py-2.5 font-heading text-xs font-bold uppercase tracking-widest text-cream hover:bg-rejection-red disabled:opacity-50"
         >
           {isInitializing ? "Initializing..." : "Start Upload Session &rarr;"}
         </button>

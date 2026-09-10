@@ -375,6 +375,7 @@ export const SearchResultDtoSchema = z.object({
     "WEBSITE",
     "CONTENT_ITEM",
     "CONTACT",
+    "CAMPAIGN_MEMORY",
   ]),
   id: z.string(),
   title: z.string(),
@@ -397,4 +398,189 @@ export const ActivityFeedOutputSchema = z.object({
   items: z.array(z.record(z.string(), z.unknown())),
   total: z.number(),
   limit: z.number(),
+  offset: z.number(),
+});
+
+// -------------------------------------------------------------
+// Memory Outputs (ADR 0007, brief sections 4, 8, 9)
+// -------------------------------------------------------------
+export const MemoryDtoSchema = z.object({
+  id: z.string(),
+  key: z.string().nullable(),
+  title: z.string(),
+  content: z.string(),
+  contentHash: z.string(),
+  category: z.enum([
+    "PREFERENCE",
+    "CONTEXT",
+    "INSTRUCTION",
+    "LESSON",
+    "PERSON",
+    "PROJECT",
+    "STYLE",
+    "PROCESS",
+    "TECHNICAL",
+    "REFERENCE",
+    "OTHER",
+  ]),
+  status: z.enum(["ACTIVE", "SUPERSEDED", "ARCHIVED"]),
+  importance: z.number(),
+  confidence: z.number(),
+  pinned: z.boolean(),
+  sourceType: z.enum(["HUMAN", "MCP", "ADMIN", "IMPORT", "SYSTEM"]),
+  sourceLabel: z.string().nullable(),
+  sourceUrl: z.string().nullable(),
+  version: z.number(),
+  accessCount: z.number(),
+  lastAccessedAt: z.string().nullable(),
+  expiresAt: z.string().nullable(),
+  isExpired: z.boolean(),
+  supersededById: z.string().nullable(),
+  supersedesId: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  href: z.string(),
+});
+
+export const MemorySummaryDtoSchema = MemoryDtoSchema.omit({ content: true }).extend({
+  contentExcerpt: z.string(),
+  sortedTagSlugs: z.array(z.string()),
+  tagsTotal: z.number(),
+});
+
+export const MemoryTagDtoSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  createdAt: z.string(),
+});
+
+export const MemoryRelationshipDtoSchema = z.object({
+  id: z.string(),
+  from: EntityRefSchema,
+  to: EntityRefSchema,
+  direction: z.enum(["incoming", "outgoing"]),
+  relationType: z.enum(["RELATES_TO", "USES_ASSET", "PART_OF"]),
+  notes: z.string().nullable(),
+  createdAt: z.string(),
+  fromTitle: z.string(),
+  toTitle: z.string(),
+  fromHref: z.string(),
+  toHref: z.string(),
+});
+
+export const MemoryDetailDtoSchema = z.object({
+  memory: MemoryDtoSchema,
+  tags: z.array(MemoryTagDtoSchema),
+  tagsTotal: z.number(),
+  tagLimit: z.number(),
+  tagOffset: z.number(),
+  relationships: z.array(MemoryRelationshipDtoSchema),
+  relationshipsTotal: z.number(),
+  relationshipLimit: z.number(),
+  relationshipOffset: z.number(),
+  supersedes: MemorySummaryDtoSchema.nullable(),
+  supersededBy: MemorySummaryDtoSchema.nullable(),
+});
+
+export const ListMemoriesOutputSchema = z.object({
+  items: z.array(MemorySummaryDtoSchema),
+  ...CommonPaginationOutput,
+});
+
+export const MemoryNextActionSchema = z.object({
+  tool: z.enum([
+    "campaign_get_memory",
+    "campaign_update_memory",
+    "campaign_supersede_memory",
+    "cancel",
+  ]),
+});
+
+export const RememberMemoryOutputSchema = z.object({
+  outcome: z.enum(["CREATED", "DUPLICATE", "ALREADY_CURRENT", "KEY_CONFLICT"]),
+  memory: MemoryDtoSchema,
+  nextActions: z.array(MemoryNextActionSchema),
+});
+
+export const UpdateMemoryOutputSchema = z.object({
+  memory: MemoryDtoSchema,
+  changed: z.boolean(),
+});
+
+export const SupersedeMemoryOutputSchema = z.object({
+  memory: MemoryDtoSchema,
+  supersededMemory: MemoryDtoSchema,
+});
+
+export const RecalledMemoryDtoSchema = z.object({
+  id: z.string(),
+  key: z.string().nullable(),
+  title: z.string(),
+  content: z.string(),
+  contentTruncated: z.boolean(),
+  category: z.enum([
+    "PREFERENCE",
+    "CONTEXT",
+    "INSTRUCTION",
+    "LESSON",
+    "PERSON",
+    "PROJECT",
+    "STYLE",
+    "PROCESS",
+    "TECHNICAL",
+    "REFERENCE",
+    "OTHER",
+  ]),
+  status: z.enum(["ACTIVE", "SUPERSEDED", "ARCHIVED"]),
+  isExpired: z.boolean(),
+  importance: z.number(),
+  confidence: z.number(),
+  pinned: z.boolean(),
+  version: z.number(),
+  expiresAt: z.string().nullable(),
+  sourceType: z.enum(["HUMAN", "MCP", "ADMIN", "IMPORT", "SYSTEM"]),
+  sourceLabel: z.string().nullable(),
+  sourceUrl: z.string().nullable(),
+  updatedAt: z.string(),
+  sortedTagSlugs: z.array(z.string()),
+  tagsTotal: z.number(),
+  href: z.string(),
+  relevanceScore: z.number(),
+  relevanceReasons: z.array(z.string()),
+});
+
+export const RecallOutputSchema = z.object({
+  items: z.array(RecalledMemoryDtoSchema),
+  limit: z.number(),
+  queryTokens: z.array(z.string()),
+  queryTokensTruncated: z.boolean(),
+});
+
+export const MemoryHealthOutputSchema = z.object({
+  active: z.number(),
+  pinned: z.number(),
+  superseded: z.number(),
+  archived: z.number(),
+  expired: z.number(),
+  possibleExactDuplicates: z.number(),
+});
+
+export const CampaignContextOutputSchema = z.object({
+  task: z.string(),
+  authorityOrder: z.array(z.string()),
+  authorityNotice: z.string(),
+  canon: z.array(z.record(z.string(), z.unknown())),
+  canonTruncated: z.boolean(),
+  recentDecisions: z.array(z.record(z.string(), z.unknown())),
+  recentDecisionsTruncated: z.boolean(),
+  memories: z.array(z.record(z.string(), z.unknown())),
+  memoriesTruncated: z.boolean(),
+  relatedWorkItems: z.array(z.record(z.string(), z.unknown())),
+  relatedWorkItemsTruncated: z.boolean(),
+  relatedAssets: z.array(z.record(z.string(), z.unknown())),
+  relatedAssetsTruncated: z.boolean(),
+  authorityWarnings: z.array(z.record(z.string(), z.unknown())),
+  authorityWarningsTruncated: z.boolean(),
+  truncatedSections: z.array(z.string()),
 });

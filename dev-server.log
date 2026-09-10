@@ -1,0 +1,68 @@
+⚠ Port 3000 is in use by an unknown process, using available port 3001 instead.
+▲ Next.js 16.3.4 (Turbopack)
+- Local:         http://localhost:3001
+- Network:       http://10.102.54.13:3001
+- Environments: .env.local
+✓ Ready in 344ms
+✓ Running next.config.ts took 21ms
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          134747
+- Dir:          /home/lisophorm/WebstormProjects/rejectionism-mcp
+- Log:          .next/dev/logs/next-development.log
+
+You can access the existing server at http://localhost:3000,
+or run kill 134747 to stop it and start a new one.
+[?25h
+⚠ Port 3000 is in use by an unknown process, using available port 3001 instead.
+▲ Next.js 16.3.4 (Turbopack)
+- Local:         http://localhost:3001
+- Network:       http://10.102.54.13:3001
+- Environments: .env.local
+✓ Ready in 359ms
+✓ Running next.config.ts took 22ms
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          134747
+- Dir:          /home/lisophorm/WebstormProjects/rejectionism-mcp
+- Log:          .next/dev/logs/next-development.log
+
+You can access the existing server at http://localhost:3000,
+or run kill 134747 to stop it and start a new one.
+[?25h
+⚠ Port 3000 is in use by an unknown process, using available port 3001 instead.
+▲ Next.js 16.3.4 (Turbopack)
+- Local:         http://localhost:3001
+- Network:       http://10.102.54.13:3001
+- Environments: .env.local
+✓ Ready in 359ms
+✓ Running next.config.ts took 21ms
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          134747
+- Dir:          /home/lisophorm/WebstormProjects/rejectionism-mcp
+- Log:          .next/dev/logs/next-development.log
+
+You can access the existing server at http://localhost:3000,
+or run kill 134747 to stop it and start a new one.
+[?25h
+⚠ Port 3000 is in use by an unknown process, using available port 3001 instead.
+▲ Next.js 16.3.4 (Turbopack)
+- Local:         http://localhost:3001
+- Network:       http://10.102.54.13:3001
+- Environments: .env.local
+✓ Ready in 347ms
+✓ Running next.config.ts took 19ms
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          134747
+- Dir:          /home/lisophorm/WebstormProjects/rejectionism-mcp
+- Log:          .next/dev/logs/next-development.log
+
+You can access the existing server at http://localhost:3000,
+or run kill 134747 to stop it and start a new one.
+[?25h
